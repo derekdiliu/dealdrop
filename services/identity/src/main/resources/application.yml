@@ -1,0 +1,15 @@
+server:
+  port: ${PORT:8081}
+
+spring:
+  application:
+    name: identity
+  threads:
+    virtual:
+      enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

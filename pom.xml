@@ -17,6 +17,11 @@
     <name>dealdrop</name>
     <description>Flash-deal e-commerce platform for New Zealand</description>
 
+    <modules>
+        <module>services/gateway</module>
+        <module>services/identity</module>
+    </modules>
+
     <properties>
         <java.version>21</java.version>
         <spring-cloud.version>2025.1.2</spring-cloud.version>

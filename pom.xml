@@ -20,6 +20,10 @@
     <modules>
         <module>services/gateway</module>
         <module>services/identity</module>
+        <module>services/catalog</module>
+        <module>services/order</module>
+        <module>services/payment</module>
+        <module>services/flash-sale</module>
     </modules>
 
     <properties>

@@ -1,0 +1,15 @@
+server:
+  port: ${PORT:8082}
+
+spring:
+  application:
+    name: catalog
+  threads:
+    virtual:
+      enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

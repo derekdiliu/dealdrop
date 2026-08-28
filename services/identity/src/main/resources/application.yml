@@ -7,6 +7,25 @@ spring:
   threads:
     virtual:
       enabled: true
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/identity}
+    username: ${DB_USERNAME:dealdrop}
+    password: ${DB_PASSWORD:dealdrop}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  mvc:
+    problemdetails:
+      enabled: true
+
+dealdrop:
+  jwt:
+    issuer: ${JWT_ISSUER:dealdrop-identity}
+    ttl: ${JWT_TTL:PT1H}
+    # Signing key pair as PEM resources, e.g. DEALDROP_JWT_PRIVATEKEY=file:/run/secrets/jwt-private.pem
+    # and DEALDROP_JWT_PUBLICKEY=file:/run/secrets/jwt-public.pem. When unset, an ephemeral key pair
+    # is generated at startup, so issued tokens do not survive a restart.
 
 management:
   endpoints:

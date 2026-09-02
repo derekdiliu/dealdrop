@@ -65,11 +65,34 @@ npm run dev
 
 RabbitMQ management UI: http://localhost:15672 (dealdrop / dealdrop).
 
+Integration tests use Testcontainers, so Docker must be running for `./mvnw verify`.
+
+## Authentication
+
+`identity` signs RS256 access tokens and publishes its public key at `/.well-known/jwks.json`.
+The gateway and every downstream service verify tokens against that key set, so a request is
+checked at the edge and again by the service that handles it.
+
+```bash
+curl -X POST localhost:8080/api/identity/register -H 'Content-Type: application/json' \
+  -d '{"email":"kiri@example.co.nz","password":"kia-ora-1234","displayName":"Kiri"}'
+
+TOKEN=$(curl -s -X POST localhost:8080/api/identity/login -H 'Content-Type: application/json' \
+  -d '{"email":"kiri@example.co.nz","password":"kia-ora-1234"}' | jq -r .accessToken)
+
+curl localhost:8080/api/identity/me -H "Authorization: Bearer $TOKEN"
+```
+
+Errors use RFC 9457 problem details. Without configured keys, identity generates an ephemeral
+key pair on startup; set `DEALDROP_JWT_PRIVATEKEY` and `DEALDROP_JWT_PUBLICKEY` to PEM resources
+(e.g. `file:/run/secrets/jwt-private.pem`) to keep tokens valid across restarts.
+
 ## Roadmap
 
 - [x] **M0** Project skeleton, local infrastructure, CI
-- [ ] **M1** Identity and gateway: registration, login, JWT validation
+- [x] **M1** Identity and gateway: registration, login, JWT validation
 - [ ] **M2** Catalog: deal management, image upload, storefront listing
 - [ ] **M3** Orders and payments: Stripe checkout, webhooks, unpaid-order timeout
 - [ ] **M4** Flash sale: atomic stock reservation, purchase limits, load test with zero overselling
 - [ ] **M5** Storefront polish and deployment
+- [ ] Refresh tokens and login rate limiting

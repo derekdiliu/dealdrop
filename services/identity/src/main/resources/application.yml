@@ -4,6 +4,10 @@ server:
 spring:
   application:
     name: identity
+  config:
+    # Local secrets live in the repository root's .env (git-ignored). Both paths are listed so it is
+    # found whether the service starts from the repository root or from its module directory (IDE default).
+    import: optional:file:.env[.properties],optional:file:../../.env[.properties]
   threads:
     virtual:
       enabled: true
@@ -20,6 +24,10 @@ spring:
       enabled: true
 
 dealdrop:
+  admin:
+    # When both are set, an admin account with these credentials is created on startup if missing.
+    email: ${ADMIN_EMAIL:}
+    password: ${ADMIN_PASSWORD:}
   jwt:
     issuer: ${JWT_ISSUER:dealdrop-identity}
     ttl: ${JWT_TTL:PT1H}

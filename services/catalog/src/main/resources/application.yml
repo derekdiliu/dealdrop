@@ -4,9 +4,43 @@ server:
 spring:
   application:
     name: catalog
+  config:
+    # Local secrets live in the repository root's .env (git-ignored). Both paths are listed so it is
+    # found whether the service starts from the repository root or from its module directory (IDE default).
+    import: optional:file:.env[.properties],optional:file:../../.env[.properties]
   threads:
     virtual:
       enabled: true
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/catalog}
+    username: ${DB_USERNAME:dealdrop}
+    password: ${DB_PASSWORD:dealdrop}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  mvc:
+    problemdetails:
+      enabled: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${IDENTITY_URL:http://localhost:8081}/.well-known/jwks.json
+          issuer-uri: ${JWT_ISSUER:dealdrop-identity}
+          authorities-claim-name: roles
+          authority-prefix: ROLE_
+
+dealdrop:
+  storage:
+    # Cloudflare R2 (S3-compatible). Endpoint: https://<account-id>.r2.cloudflarestorage.com
+    endpoint: ${R2_ENDPOINT:}
+    region: auto
+    bucket: ${R2_BUCKET:}
+    access-key-id: ${R2_ACCESS_KEY_ID:}
+    secret-access-key: ${R2_SECRET_ACCESS_KEY:}
+    # Public base URL images are served from, e.g. https://pub-<id>.r2.dev or a custom domain.
+    public-base-url: ${R2_PUBLIC_BASE_URL:}
 
 management:
   endpoints:

@@ -37,7 +37,7 @@ class GatewayRoutingTests {
 
     private static final RSAKey SIGNING_KEY = generateKey();
     private static final AtomicReference<HttpExchange> lastForwarded = new AtomicReference<>();
-    private static final HttpServer identityStub = startIdentityStub();
+    private static final HttpServer downstreamStub = startDownstreamStub();
 
     private final HttpClient http = HttpClient.newHttpClient();
 
@@ -45,14 +45,15 @@ class GatewayRoutingTests {
     private int port;
 
     @DynamicPropertySource
-    static void identityUrl(DynamicPropertyRegistry registry) {
-        registry.add("dealdrop.services.identity-url",
-                () -> "http://localhost:" + identityStub.getAddress().getPort());
+    static void serviceUrls(DynamicPropertyRegistry registry) {
+        String stubUrl = "http://localhost:" + downstreamStub.getAddress().getPort();
+        registry.add("dealdrop.services.identity-url", () -> stubUrl);
+        registry.add("dealdrop.services.catalog-url", () -> stubUrl);
     }
 
     @AfterAll
     static void stopStub() {
-        identityStub.stop(0);
+        downstreamStub.stop(0);
     }
 
     @BeforeEach
@@ -105,6 +106,22 @@ class GatewayRoutingTests {
     }
 
     @Test
+    void storefrontReadsAreForwardedWithoutToken() throws Exception {
+        HttpResponse<String> response = send(HttpRequest.newBuilder(gateway("/api/catalog/deals")).GET());
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(lastForwarded.get().getRequestURI().getPath()).isEqualTo("/api/catalog/deals");
+    }
+
+    @Test
+    void backOfficeRequiresTokenAtTheEdge() throws Exception {
+        HttpResponse<String> response = send(HttpRequest.newBuilder(gateway("/api/catalog/admin/deals")).GET());
+
+        assertThat(response.statusCode()).isEqualTo(401);
+        assertThat(lastForwarded.get()).isNull();
+    }
+
+    @Test
     void healthIsPublic() throws Exception {
         assertThat(send(HttpRequest.newBuilder(gateway("/actuator/health")).GET()).statusCode()).isEqualTo(200);
     }
@@ -138,16 +155,18 @@ class GatewayRoutingTests {
         }
     }
 
-    /** Stands in for the identity service: serves the JWKS and echoes anything routed to it. */
-    private static HttpServer startIdentityStub() {
+    /** Stands in for the downstream services: serves identity's JWKS and echoes anything routed to it. */
+    private static HttpServer startDownstreamStub() {
         try {
             HttpServer server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
             String jwks = new JWKSet(SIGNING_KEY.toPublicJWK()).toString();
             server.createContext("/.well-known/jwks.json", exchange -> respond(exchange, jwks));
-            server.createContext("/api/identity/", exchange -> {
-                lastForwarded.set(exchange);
-                respond(exchange, "{\"ok\":true}");
-            });
+            for (String prefix : new String[] {"/api/identity/", "/api/catalog/"}) {
+                server.createContext(prefix, exchange -> {
+                    lastForwarded.set(exchange);
+                    respond(exchange, "{\"ok\":true}");
+                });
+            }
             server.start();
             return server;
         } catch (IOException e) {

@@ -7,6 +7,53 @@ spring:
   threads:
     virtual:
       enabled: true
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/orders}
+    username: ${DB_USERNAME:dealdrop}
+    password: ${DB_PASSWORD:dealdrop}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  mvc:
+    problemdetails:
+      enabled: true
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:dealdrop}
+    password: ${RABBITMQ_PASSWORD:dealdrop}
+    # The outbox relay waits for broker confirms before marking a message as published.
+    publisher-confirm-type: simple
+    listener:
+      simple:
+        # Failed messages are retried with backoff, then dead-lettered instead of requeued forever.
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: 5
+          initial-interval: 1s
+          multiplier: 2
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${IDENTITY_URL:http://localhost:8081}/.well-known/jwks.json
+          issuer-uri: ${JWT_ISSUER:dealdrop-identity}
+
+dealdrop:
+  services:
+    catalog-url: ${CATALOG_URL:http://localhost:8082}
+  order:
+    # Unpaid orders are cancelled after this long and their stock is released.
+    payment-timeout: PT15M
+  outbox:
+    poll-interval: PT1S
+  shipping:
+    # NZD cents, GST-inclusive.
+    north-island-cents: 699
+    south-island-cents: 999
+    rural-surcharge-cents: 500
 
 management:
   endpoints:

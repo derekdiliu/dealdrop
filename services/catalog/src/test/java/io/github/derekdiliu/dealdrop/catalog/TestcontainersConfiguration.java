@@ -24,7 +24,7 @@ public class TestcontainersConfiguration {
 
     @Bean
     GenericContainer<?> s3MockContainer() {
-        return new GenericContainer<>("adobe/s3mock:5.2.0")
+        return new GenericContainer<>("adobe/s3mock:5.2.3")
                 .withExposedPorts(9090)
                 .withEnv("COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS", BUCKET);
     }

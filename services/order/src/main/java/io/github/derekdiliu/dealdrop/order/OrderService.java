@@ -2,6 +2,7 @@ package io.github.derekdiliu.dealdrop.order;
 
 import io.github.derekdiliu.dealdrop.order.catalog.CatalogDeal;
 import io.github.derekdiliu.dealdrop.order.catalog.DealCatalog;
+import io.github.derekdiliu.dealdrop.order.outbox.Outbox;
 import io.github.derekdiliu.dealdrop.order.shipping.ShippingRates;
 import io.github.derekdiliu.dealdrop.order.shipping.ShippingZone;
 import org.slf4j.Logger;
@@ -22,16 +23,18 @@ class OrderService {
     private final DealCatalog catalog;
     private final Inventory inventory;
     private final OrderRepository orders;
+    private final Outbox outbox;
     private final ShippingRates shippingRates;
     private final TransactionTemplate transaction;
     private final Duration paymentTimeout;
 
-    OrderService(DealCatalog catalog, Inventory inventory, OrderRepository orders,
+    OrderService(DealCatalog catalog, Inventory inventory, OrderRepository orders, Outbox outbox,
                  ShippingRates shippingRates, TransactionTemplate transaction,
                  @Value("${dealdrop.order.payment-timeout}") Duration paymentTimeout) {
         this.catalog = catalog;
         this.inventory = inventory;
         this.orders = orders;
+        this.outbox = outbox;
         this.shippingRates = shippingRates;
         this.transaction = transaction;
         this.paymentTimeout = paymentTimeout;
@@ -63,6 +66,7 @@ class OrderService {
                 throw ApiErrors.conflict("Sorry, there isn't enough stock left for that quantity.");
             }
             Order order = orders.save(new Order(userId, deal, quantity, address, zone, shippingCents, paymentTimeout));
+            outbox.enqueue("", PaymentTimeoutQueues.WAITING, order.getId().toString(), paymentTimeout);
             return order;
         });
     }

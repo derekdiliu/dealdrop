@@ -15,7 +15,7 @@ Next.js storefront
         │
         ├── identity     users, addresses, login (OAuth2 / JWT)
         ├── catalog      deals, pricing, images (Cloudflare R2)
-        ├── order        cart, orders, outbox, unpaid-order timeout
+        ├── order        orders, stock and purchase limits, outbox, unpaid-order timeout
         ├── payment      Stripe payments, webhooks, refunds
         └── flash-sale   atomic stock reservation (Redis + Lua), purchase limits, async order creation
 
@@ -120,12 +120,41 @@ curl localhost:8080/api/catalog/deals
 
 Published deals are locked; drafts can be edited or deleted. Tests run against S3Mock instead of R2.
 
+## Orders
+
+Checkout is "buy now" on a single deal: a flash sale reserves stock at the moment of purchase, so a
+cart would only defer the sold-out surprise. Placing an order does all of this in one transaction:
+
+1. Claim the customer's allowance for the deal (`INSERT ... ON CONFLICT DO UPDATE ... WHERE total <= limit`)
+2. Reserve stock (`UPDATE ... SET remaining = remaining - n WHERE remaining >= n`)
+3. Save the order as `PENDING_PAYMENT`, with prices snapshotted from the catalog
+4. Write a payment-timeout message to the outbox
+
+Each step is a single conditional statement, so concurrent buyers can never oversell or exceed a
+limit; a test fires 20 concurrent buyers at 5 units and expects exactly 5 orders.
+
+Shipping is a flat rate by island, worked out from the postcode (0-6 North Island, 7-9 South Island),
+plus a surcharge for rural delivery addresses. GST is shown on the order total.
+
+**Unpaid orders** are cancelled after 15 minutes using RabbitMQ message TTL and dead-lettering:
+
+```
+order + outbox row ──(relay, publisher confirms)──► payment-timeout.waiting  (TTL = payment window)
+                                                        │ expires, dead-lettered
+                                                        ▼
+                     cancel if still unpaid ◄── payment-timeout.expired ──(retries exhausted)──► .failed
+```
+
+Cancelling is a conditional update (`WHERE status = 'PENDING_PAYMENT'`) that returns the stock and the
+customer's allowance, so a duplicate message or a race with a customer cancellation is harmless.
+
 ## Roadmap
 
 - [x] **M0** Project skeleton, local infrastructure, CI
 - [x] **M1** Identity and gateway: registration, login, JWT validation
 - [x] **M2** Catalog: deal management, image upload, storefront listing
-- [ ] **M3** Orders and payments: Stripe checkout, webhooks, unpaid-order timeout
+- [x] **M3a** Orders: atomic stock and purchase limits, NZ shipping, outbox, unpaid-order timeout
+- [ ] **M3b** Payments: Stripe checkout and webhooks
 - [ ] **M4** Flash sale: atomic stock reservation, purchase limits, load test with zero overselling
 - [ ] **M5** Storefront polish, back-office UI and deployment
 - [ ] Refresh tokens and login rate limiting

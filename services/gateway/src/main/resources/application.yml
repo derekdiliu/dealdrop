@@ -5,6 +5,7 @@ dealdrop:
   services:
     identity-url: ${IDENTITY_URL:http://localhost:8081}
     catalog-url: ${CATALOG_URL:http://localhost:8082}
+    order-url: ${ORDER_URL:http://localhost:8083}
 
 spring:
   application:
@@ -25,6 +26,10 @@ spring:
               uri: ${dealdrop.services.catalog-url}
               predicates:
                 - Path=/api/catalog/**
+            - id: order
+              uri: ${dealdrop.services.order-url}
+              predicates:
+                - Path=/api/order/**
   security:
     oauth2:
       resourceserver:

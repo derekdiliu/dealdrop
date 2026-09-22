@@ -49,6 +49,7 @@ class GatewayRoutingTests {
         String stubUrl = "http://localhost:" + downstreamStub.getAddress().getPort();
         registry.add("dealdrop.services.identity-url", () -> stubUrl);
         registry.add("dealdrop.services.catalog-url", () -> stubUrl);
+        registry.add("dealdrop.services.order-url", () -> stubUrl);
     }
 
     @AfterAll
@@ -122,6 +123,18 @@ class GatewayRoutingTests {
     }
 
     @Test
+    void ordersRequireTokenAndAreForwardedWithIt() throws Exception {
+        assertThat(send(HttpRequest.newBuilder(gateway("/api/order/orders")).GET()).statusCode()).isEqualTo(401);
+        assertThat(lastForwarded.get()).isNull();
+
+        String token = token(SIGNING_KEY, "dealdrop-identity", Instant.now().plusSeconds(600));
+        HttpResponse<String> response = send(HttpRequest.newBuilder(gateway("/api/order/orders"))
+                .header("Authorization", "Bearer " + token).GET());
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(lastForwarded.get().getRequestURI().getPath()).isEqualTo("/api/order/orders");
+    }
+
+    @Test
     void healthIsPublic() throws Exception {
         assertThat(send(HttpRequest.newBuilder(gateway("/actuator/health")).GET()).statusCode()).isEqualTo(200);
     }
@@ -161,7 +174,7 @@ class GatewayRoutingTests {
             HttpServer server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
             String jwks = new JWKSet(SIGNING_KEY.toPublicJWK()).toString();
             server.createContext("/.well-known/jwks.json", exchange -> respond(exchange, jwks));
-            for (String prefix : new String[] {"/api/identity/", "/api/catalog/"}) {
+            for (String prefix : new String[] {"/api/identity/", "/api/catalog/", "/api/order/"}) {
                 server.createContext(prefix, exchange -> {
                     lastForwarded.set(exchange);
                     respond(exchange, "{\"ok\":true}");

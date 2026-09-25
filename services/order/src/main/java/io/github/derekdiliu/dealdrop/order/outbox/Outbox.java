@@ -4,6 +4,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.sql.Timestamp;
 import java.time.Duration;
@@ -18,16 +19,19 @@ import java.util.UUID;
 public class Outbox {
 
     private final JdbcClient jdbc;
+    private final JsonMapper json;
 
-    Outbox(JdbcClient jdbc) {
+    Outbox(JdbcClient jdbc, JsonMapper json) {
         this.jdbc = jdbc;
+        this.json = json;
     }
 
     /**
+     * @param payload    serialized as JSON
      * @param expiration how long the broker keeps the message before dead-lettering it, or null to keep it
      */
     @Transactional(propagation = Propagation.MANDATORY)
-    public void enqueue(String exchange, String routingKey, String payload, Duration expiration) {
+    public void enqueue(String exchange, String routingKey, Object payload, Duration expiration) {
         jdbc.sql("""
                         INSERT INTO outbox_messages (id, exchange, routing_key, payload, expiration_ms, created_at)
                         VALUES (:id, :exchange, :routingKey, :payload, :expirationMs, :createdAt)
@@ -35,7 +39,7 @@ public class Outbox {
                 .param("id", UUID.randomUUID())
                 .param("exchange", exchange)
                 .param("routingKey", routingKey)
-                .param("payload", payload)
+                .param("payload", json.writeValueAsString(payload))
                 .param("expirationMs", expiration == null ? null : expiration.toMillis())
                 .param("createdAt", Timestamp.from(Instant.now()))
                 .update();

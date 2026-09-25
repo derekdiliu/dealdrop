@@ -1,6 +1,6 @@
 package io.github.derekdiliu.dealdrop.order;
 
-import io.github.derekdiliu.dealdrop.order.catalog.CatalogDeal;
+import io.github.derekdiliu.dealdrop.order.messages.PlaceOrder;
 import io.github.derekdiliu.dealdrop.order.shipping.ShippingZone;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
@@ -80,19 +80,18 @@ public class Order {
     protected Order() {
     }
 
-    Order(UUID userId, CatalogDeal deal, int quantity, ShippingAddress shippingAddress, ShippingZone zone,
-          long shippingCents, Duration paymentTimeout) {
-        this.id = UUID.randomUUID();
-        this.userId = userId;
-        this.dealId = deal.id();
-        this.dealTitle = deal.title();
-        this.unitPriceCents = deal.priceCents();
-        this.quantity = quantity;
+    Order(PlaceOrder request, ShippingZone zone, long shippingCents, Duration paymentTimeout) {
+        this.id = request.orderId();
+        this.userId = request.userId();
+        this.dealId = request.dealId();
+        this.dealTitle = request.dealTitle();
+        this.unitPriceCents = request.unitPriceCents();
+        this.quantity = request.quantity();
         this.shippingCents = shippingCents;
-        this.totalCents = deal.priceCents() * quantity + shippingCents;
+        this.totalCents = request.unitPriceCents() * request.quantity() + shippingCents;
         this.gstCents = Gst.includedIn(totalCents);
         this.status = OrderStatus.PENDING_PAYMENT;
-        this.shippingAddress = shippingAddress;
+        this.shippingAddress = request.shippingAddress();
         this.shippingZone = zone;
         this.createdAt = Instant.now();
         this.expiresAt = createdAt.plus(paymentTimeout);

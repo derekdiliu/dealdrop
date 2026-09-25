@@ -72,7 +72,7 @@ class OutboxRelay {
 
     private void publish(PendingMessage pending) {
         MessageProperties properties = new MessageProperties();
-        properties.setContentType(MessageProperties.CONTENT_TYPE_TEXT_PLAIN);
+        properties.setContentType(MessageProperties.CONTENT_TYPE_JSON);
         properties.setMessageId(pending.id().toString());
         if (pending.expirationMs() != null) {
             properties.setExpiration(pending.expirationMs().toString());

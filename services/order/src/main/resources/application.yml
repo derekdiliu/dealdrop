@@ -42,8 +42,6 @@ spring:
           issuer-uri: ${JWT_ISSUER:dealdrop-identity}
 
 dealdrop:
-  services:
-    catalog-url: ${CATALOG_URL:http://localhost:8082}
   order:
     # Unpaid orders are cancelled after this long and their stock is released.
     payment-timeout: PT15M

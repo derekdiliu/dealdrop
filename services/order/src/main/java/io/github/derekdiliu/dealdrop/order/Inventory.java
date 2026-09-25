@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -56,9 +57,9 @@ class Inventory {
 
     /**
      * Cancels the order if it is still awaiting payment and returns its stock and allowance.
-     * Returns false if the order was already paid or cancelled, which makes repeated calls harmless.
+     * Returns empty if the order was already paid or cancelled, which makes repeated calls harmless.
      */
-    boolean cancelIfPending(UUID orderId, CancelReason reason) {
+    Optional<Released> cancelIfPending(UUID orderId, CancelReason reason) {
         return jdbc.sql("""
                         UPDATE orders
                         SET status = 'CANCELLED', cancel_reason = :reason, updated_at = :now, version = version + 1
@@ -72,9 +73,8 @@ class Inventory {
                 .optional()
                 .map(released -> {
                     release(released);
-                    return true;
-                })
-                .orElse(false);
+                    return released;
+                });
     }
 
     private void release(Released released) {

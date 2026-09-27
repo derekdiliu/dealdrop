@@ -7,6 +7,44 @@ spring:
   threads:
     virtual:
       enabled: true
+  mvc:
+    problemdetails:
+      enabled: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:dealdrop}
+    password: ${RABBITMQ_PASSWORD:dealdrop}
+    # A purchase is only accepted once the broker has confirmed the order request.
+    publisher-confirm-type: simple
+    listener:
+      simple:
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: 5
+          initial-interval: 1s
+          multiplier: 2
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${IDENTITY_URL:http://localhost:8081}/.well-known/jwks.json
+          issuer-uri: ${JWT_ISSUER:dealdrop-identity}
+
+dealdrop:
+  services:
+    catalog-url: ${CATALOG_URL:http://localhost:8082}
+  flash-sale:
+    # Purchase attempts allowed per customer per deal within each window, to blunt bots and retry storms.
+    rate-limit: 5
+    rate-window: PT10S
+    # How long deal details from the catalog are reused before being fetched again.
+    deal-cache-ttl: PT10S
 
 management:
   endpoints:

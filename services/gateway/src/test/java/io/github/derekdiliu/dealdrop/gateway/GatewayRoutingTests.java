@@ -50,6 +50,7 @@ class GatewayRoutingTests {
         registry.add("dealdrop.services.identity-url", () -> stubUrl);
         registry.add("dealdrop.services.catalog-url", () -> stubUrl);
         registry.add("dealdrop.services.order-url", () -> stubUrl);
+        registry.add("dealdrop.services.flash-sale-url", () -> stubUrl);
     }
 
     @AfterAll
@@ -135,6 +136,20 @@ class GatewayRoutingTests {
     }
 
     @Test
+    void flashSaleStockIsPublicButPurchasesNeedToken() throws Exception {
+        HttpResponse<String> stock = send(HttpRequest.newBuilder(
+                gateway("/api/flash-sale/deals/8a6e0804-2bd0-4672-b79d-d97027f9071b/stock")).GET());
+        assertThat(stock.statusCode()).isEqualTo(200);
+        lastForwarded.set(null);
+
+        HttpResponse<String> purchase = send(HttpRequest.newBuilder(
+                        gateway("/api/flash-sale/deals/8a6e0804-2bd0-4672-b79d-d97027f9071b/purchases"))
+                .POST(HttpRequest.BodyPublishers.ofString("{}")));
+        assertThat(purchase.statusCode()).isEqualTo(401);
+        assertThat(lastForwarded.get()).isNull();
+    }
+
+    @Test
     void healthIsPublic() throws Exception {
         assertThat(send(HttpRequest.newBuilder(gateway("/actuator/health")).GET()).statusCode()).isEqualTo(200);
     }
@@ -174,7 +189,7 @@ class GatewayRoutingTests {
             HttpServer server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
             String jwks = new JWKSet(SIGNING_KEY.toPublicJWK()).toString();
             server.createContext("/.well-known/jwks.json", exchange -> respond(exchange, jwks));
-            for (String prefix : new String[] {"/api/identity/", "/api/catalog/", "/api/order/"}) {
+            for (String prefix : new String[] {"/api/identity/", "/api/catalog/", "/api/order/", "/api/flash-sale/"}) {
                 server.createContext(prefix, exchange -> {
                     lastForwarded.set(exchange);
                     respond(exchange, "{\"ok\":true}");

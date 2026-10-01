@@ -28,6 +28,20 @@ export async function getDeals(): Promise<Deal[]> {
   return response.json();
 }
 
+/** Units still available while a deal is live; null if the sale service can't be reached. */
+export async function getRemainingStock(id: string): Promise<number | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/flash-sale/deals/${encodeURIComponent(id)}/stock`);
+    if (!response.ok) {
+      return null;
+    }
+    const body: { remaining: number } = await response.json();
+    return body.remaining;
+  } catch {
+    return null;
+  }
+}
+
 /** Returns null when the deal does not exist or is not published. */
 export async function getDeal(id: string): Promise<Deal | null> {
   const response = await fetch(`${API_BASE_URL}/api/catalog/deals/${encodeURIComponent(id)}`);

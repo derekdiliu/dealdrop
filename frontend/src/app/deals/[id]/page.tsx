@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { StateBadge, TimingLine } from "@/components/deal-timing";
-import { getDeal } from "@/lib/deals";
+import { getDeal, getRemainingStock } from "@/lib/deals";
 import { discountPercent, formatNzd } from "@/lib/format";
 
 // The page itself never awaits, so its shell can be prerendered; the deal streams in per request.
@@ -27,6 +27,7 @@ async function DealDetail({ params }: Pick<PageProps<"/deals/[id]">, "params">) 
   if (!deal) {
     notFound();
   }
+  const remaining = deal.state === "LIVE" ? await getRemainingStock(deal.id) : null;
 
   return (
     <article className="mt-6 grid gap-8 md:grid-cols-2">
@@ -61,7 +62,12 @@ async function DealDetail({ params }: Pick<PageProps<"/deals/[id]">, "params">) 
           </p>
         </div>
         <p className="text-sm">
-          Only {deal.stock} available · Limit {deal.perCustomerLimit} per customer
+          {remaining === null
+            ? `Only ${deal.stock} available`
+            : remaining === 0
+              ? "Sold out"
+              : `${remaining} of ${deal.stock} left`}
+          {" · "}Limit {deal.perCustomerLimit} per customer
         </p>
         <p className="whitespace-pre-line leading-relaxed text-zinc-700 dark:text-zinc-300">
           {deal.description}

@@ -120,10 +120,37 @@ curl localhost:8080/api/catalog/deals
 
 Published deals are locked; drafts can be edited or deleted. Tests run against S3Mock instead of R2.
 
-## Orders
+## Flash sale
 
 Checkout is "buy now" on a single deal: a flash sale reserves stock at the moment of purchase, so a
-cart would only defer the sold-out surprise. Placing an order does all of this in one transaction:
+cart would only defer the sold-out surprise. A sale's burst of purchases is decided in Redis and only
+admitted purchases reach the database:
+
+```
+POST /api/flash-sale/deals/{id}/purchases
+  │
+  ▼
+flash-sale ── Lua script, atomic in Redis: rate limit → per-customer limit → stock ──► 409 / 429
+  │ admitted: 202 Accepted + purchase id (also the future order id)
+  ▼
+RabbitMQ order.place-requests (publisher confirms: accepted means stored)
+  ▼
+order ── Postgres transaction (below) ──► order.placed / order.rejected / order.cancelled
+  ▼
+flash-sale: purchase status for the client to poll; stock returned to Redis on reject or cancel
+```
+
+- **Postgres is the source of truth; Redis is the gate.** If Redis ever over-admits (say it lost its
+  data and reseeded), the database rejects the extra orders and flash-sale marks the deal sold out.
+- **Every step is idempotent.** Order placement checks for an existing order id, cancellation is a
+  conditional update, and Redis releases stock at most once per order, so redelivered messages are harmless.
+- **The gateway forwards over a bounded connection pool.** Passing a burst on one-to-one opens a
+  connection per request to the backend and overflows its accept queue; capping the pool makes the
+  excess wait at the edge instead. The load test below found this.
+
+## Orders
+
+The order service turns each admitted purchase into an order in one transaction:
 
 1. Claim the customer's allowance for the deal (`INSERT ... ON CONFLICT DO UPDATE ... WHERE total <= limit`)
 2. Reserve stock (`UPDATE ... SET remaining = remaining - n WHERE remaining >= n`)
@@ -131,7 +158,7 @@ cart would only defer the sold-out surprise. Placing an order does all of this i
 4. Write a payment-timeout message to the outbox
 
 Each step is a single conditional statement, so concurrent buyers can never oversell or exceed a
-limit; a test fires 20 concurrent buyers at 5 units and expects exactly 5 orders.
+limit; a test fires 20 concurrent placements at 5 units and expects exactly 5 orders.
 
 Shipping is a flat rate by island, worked out from the postcode (0-6 North Island, 7-9 South Island),
 plus a surcharge for rural delivery addresses. GST is shown on the order total.
@@ -148,6 +175,27 @@ order + outbox row ──(relay, publisher confirms)──► payment-timeout.wa
 Cancelling is a conditional update (`WHERE status = 'PENDING_PAYMENT'`) that returns the stock and the
 customer's allowance, so a duplicate message or a race with a customer cancellation is harmless.
 
+## Load test
+
+[`loadtest/flash-sale.js`](loadtest/flash-sale.js) (k6) creates a deal, signs up one customer per
+virtual user, then has them all buy at the same instant, through the gateway:
+
+```bash
+k6 run -e ADMIN_EMAIL=... -e ADMIN_PASSWORD=... loadtest/flash-sale.js   # 1000 buyers, 100 units
+```
+
+Result on a laptop (Apple Silicon) also running k6, all five services, Postgres, Redis and RabbitMQ:
+
+| | |
+|---|---|
+| Buyers / units | 1000 / 100 |
+| Accepted / sold out / errors | 100 / 900 / 0 |
+| Orders in Postgres | 100, one per customer; remaining stock 0 in Postgres and Redis |
+| Purchase latency (all 1000 at once) | median 391 ms, p95 522 ms, max 536 ms |
+| Last order persisted | 593 ms after the first |
+
+Afterwards every dead-letter queue and the outbox were empty.
+
 ## Roadmap
 
 - [x] **M0** Project skeleton, local infrastructure, CI
@@ -155,6 +203,6 @@ customer's allowance, so a duplicate message or a race with a customer cancellat
 - [x] **M2** Catalog: deal management, image upload, storefront listing
 - [x] **M3a** Orders: atomic stock and purchase limits, NZ shipping, outbox, unpaid-order timeout
 - [ ] **M3b** Payments: Stripe checkout and webhooks
-- [ ] **M4** Flash sale: atomic stock reservation, purchase limits, load test with zero overselling
+- [x] **M4** Flash sale: Redis gate, async order creation, load test with zero overselling
 - [ ] **M5** Storefront polish, back-office UI and deployment
 - [ ] Refresh tokens and login rate limiting

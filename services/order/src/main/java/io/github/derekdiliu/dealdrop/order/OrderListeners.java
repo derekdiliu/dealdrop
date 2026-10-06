@@ -1,6 +1,7 @@
 package io.github.derekdiliu.dealdrop.order;
 
 import io.github.derekdiliu.dealdrop.order.messages.OrderEvents.PaymentTimeout;
+import io.github.derekdiliu.dealdrop.order.messages.PaymentSucceeded;
 import io.github.derekdiliu.dealdrop.order.messages.PlaceOrder;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
@@ -17,6 +18,11 @@ class OrderListeners {
     @RabbitListener(queues = Messaging.PLACE_REQUESTS)
     void onPlaceOrder(PlaceOrder request) {
         orders.place(request);
+    }
+
+    @RabbitListener(queues = Messaging.PAYMENT_SUCCEEDED)
+    void onPaymentSucceeded(PaymentSucceeded payment) {
+        orders.markPaid(payment);
     }
 
     /** Paid or already-cancelled orders are left untouched. */

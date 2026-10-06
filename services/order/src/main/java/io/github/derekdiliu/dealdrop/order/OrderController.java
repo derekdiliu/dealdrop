@@ -61,13 +61,14 @@ class OrderController {
             ShippingAddress shippingAddress,
             ShippingZone shippingZone,
             Instant createdAt,
-            Instant expiresAt) {
+            Instant expiresAt,
+            Instant paidAt) {
 
         static OrderResponse from(Order order) {
             return new OrderResponse(order.getId(), order.getDealId(), order.getDealTitle(), order.getQuantity(), "NZD",
                     order.getUnitPriceCents(), order.getShippingCents(), order.getTotalCents(), order.getGstCents(),
                     order.getStatus(), order.getCancelReason(), order.getShippingAddress(), order.getShippingZone(),
-                    order.getCreatedAt(), order.getExpiresAt());
+                    order.getCreatedAt(), order.getExpiresAt(), order.getPaidAt());
         }
     }
 }

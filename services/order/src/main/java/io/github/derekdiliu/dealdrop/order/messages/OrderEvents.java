@@ -10,6 +10,7 @@ public final class OrderEvents {
     public static final String PLACED = "order.placed";
     public static final String REJECTED = "order.rejected";
     public static final String CANCELLED = "order.cancelled";
+    public static final String PAYMENT_REJECTED = "order.payment-rejected";
 
     private OrderEvents() {
     }
@@ -23,6 +24,17 @@ public final class OrderEvents {
 
     /** A placed order was cancelled and its stock returned. */
     public record OrderCancelled(UUID orderId, UUID userId, UUID dealId, int quantity) {
+    }
+
+    /** A payment arrived that the order cannot accept; the payment service refunds it. */
+    public record OrderPaymentRejected(UUID orderId, String paymentIntentId, PaymentRejectReason reason) {
+    }
+
+    public enum PaymentRejectReason {
+        /** Most often the payment window closed just before the customer paid. */
+        ORDER_NOT_AWAITING_PAYMENT,
+        ORDER_NOT_FOUND,
+        AMOUNT_MISMATCH
     }
 
     public enum RejectReason {

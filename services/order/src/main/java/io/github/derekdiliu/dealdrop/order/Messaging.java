@@ -1,5 +1,8 @@
 package io.github.derekdiliu.dealdrop.order;
 
+import io.github.derekdiliu.dealdrop.order.messages.PaymentSucceeded;
+import org.springframework.amqp.core.Binding;
+import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.core.TopicExchange;
@@ -19,7 +22,9 @@ import org.springframework.context.annotation.Configuration;
  *               ▼
  *            PAYMENT_TIMEOUT_EXPIRED ──► PaymentTimeoutListener cancels the order if still unpaid
  *
- * outbox ──► EVENTS exchange (order.placed / order.rejected / order.cancelled) ──► flash-sale
+ * outbox ──► EVENTS exchange (order.placed / order.rejected / order.cancelled / order.payment-rejected)
+ *
+ * payment.events ──payment.succeeded──► PAYMENT_SUCCEEDED ──► OrderListeners marks the order paid
  * </pre>
  *
  * Consumer queues dead-letter to a ".failed" queue once retries are exhausted, so a poison message is
@@ -38,6 +43,9 @@ class Messaging {
     static final String PLACE_REQUESTS = "order.place-requests";
     static final String PAYMENT_TIMEOUT_WAITING = "order.payment-timeout.waiting";
     static final String PAYMENT_TIMEOUT_EXPIRED = "order.payment-timeout.expired";
+    // Owned by the payment service; declared here too so the binding below can be made.
+    static final String PAYMENT_EVENTS = "payment.events";
+    static final String PAYMENT_SUCCEEDED = "order.payment-succeeded";
     private static final String PAYMENT_TIMEOUT_FAILED = "order.payment-timeout.failed";
 
     /** JSON payloads, deserialized into each listener's parameter type rather than a sender-chosen class. */
@@ -79,6 +87,26 @@ class Messaging {
     @Bean
     Queue paymentTimeoutFailed() {
         return QueueBuilder.durable(PAYMENT_TIMEOUT_FAILED).build();
+    }
+
+    @Bean
+    TopicExchange paymentEvents() {
+        return new TopicExchange(PAYMENT_EVENTS);
+    }
+
+    @Bean
+    Queue paymentSucceeded() {
+        return deadLetteringTo(PAYMENT_SUCCEEDED, PAYMENT_SUCCEEDED + ".failed");
+    }
+
+    @Bean
+    Queue paymentSucceededFailed() {
+        return QueueBuilder.durable(PAYMENT_SUCCEEDED + ".failed").build();
+    }
+
+    @Bean
+    Binding paymentSucceededBinding() {
+        return BindingBuilder.bind(paymentSucceeded()).to(paymentEvents()).with(PaymentSucceeded.ROUTING_KEY);
     }
 
     private static Queue deadLetteringTo(String name, String failedQueue) {

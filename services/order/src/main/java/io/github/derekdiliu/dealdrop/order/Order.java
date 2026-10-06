@@ -16,8 +16,9 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Status changes are made with conditional SQL updates in {@link Inventory}, not through this entity,
- * so that concurrent cancellations and payments cannot both succeed.
+ * Status changes are made with conditional updates ({@link Inventory#cancelIfPending},
+ * {@link OrderRepository#markPaidIfPending}), not through this entity, so that a concurrent cancellation
+ * and payment cannot both succeed.
  */
 @Entity
 @Table(name = "orders")
@@ -73,6 +74,12 @@ public class Order {
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    @Column(name = "payment_intent_id")
+    private String paymentIntentId;
+
+    @Column(name = "paid_at")
+    private Instant paidAt;
 
     @Version
     private long version;
@@ -156,5 +163,13 @@ public class Order {
 
     public Instant getExpiresAt() {
         return expiresAt;
+    }
+
+    public String getPaymentIntentId() {
+        return paymentIntentId;
+    }
+
+    public Instant getPaidAt() {
+        return paidAt;
     }
 }

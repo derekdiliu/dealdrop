@@ -3,10 +3,13 @@ package io.github.derekdiliu.dealdrop.order;
 import io.github.derekdiliu.dealdrop.order.Inventory.Released;
 import io.github.derekdiliu.dealdrop.order.messages.OrderEvents;
 import io.github.derekdiliu.dealdrop.order.messages.OrderEvents.OrderCancelled;
+import io.github.derekdiliu.dealdrop.order.messages.OrderEvents.OrderPaymentRejected;
 import io.github.derekdiliu.dealdrop.order.messages.OrderEvents.OrderPlaced;
 import io.github.derekdiliu.dealdrop.order.messages.OrderEvents.OrderRejected;
+import io.github.derekdiliu.dealdrop.order.messages.OrderEvents.PaymentRejectReason;
 import io.github.derekdiliu.dealdrop.order.messages.OrderEvents.PaymentTimeout;
 import io.github.derekdiliu.dealdrop.order.messages.OrderEvents.RejectReason;
+import io.github.derekdiliu.dealdrop.order.messages.PaymentSucceeded;
 import io.github.derekdiliu.dealdrop.order.messages.PlaceOrder;
 import io.github.derekdiliu.dealdrop.order.outbox.Outbox;
 import io.github.derekdiliu.dealdrop.order.shipping.ShippingRates;
@@ -18,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -101,6 +105,31 @@ class OrderService {
     void expire(UUID orderId) {
         cancel(orderId, CancelReason.PAYMENT_TIMEOUT)
                 .ifPresent(released -> log.info("Cancelled unpaid order {} after payment timeout", orderId));
+    }
+
+    /**
+     * Marks the order paid. A payment the order can't accept, most often one that lands just after the
+     * payment window closed, is announced as rejected so the payment service refunds it.
+     * A repeat of a payment already recorded is ignored.
+     */
+    void markPaid(PaymentSucceeded payment) {
+        transaction.executeWithoutResult(status -> {
+            if (orders.markPaidIfPending(payment.orderId(), payment.paymentIntentId(), payment.amountCents(),
+                    Instant.now()) == 1) {
+                log.info("Order {} paid", payment.orderId());
+                return;
+            }
+            Optional<Order> order = orders.findById(payment.orderId());
+            if (order.isPresent() && payment.paymentIntentId().equals(order.get().getPaymentIntentId())) {
+                return;
+            }
+            PaymentRejectReason reason = order.isEmpty() ? PaymentRejectReason.ORDER_NOT_FOUND
+                    : order.get().getStatus() != OrderStatus.PENDING_PAYMENT ? PaymentRejectReason.ORDER_NOT_AWAITING_PAYMENT
+                    : PaymentRejectReason.AMOUNT_MISMATCH;
+            log.warn("Rejecting payment {} for order {}: {}", payment.paymentIntentId(), payment.orderId(), reason);
+            outbox.enqueue(Messaging.EVENTS, OrderEvents.PAYMENT_REJECTED,
+                    new OrderPaymentRejected(payment.orderId(), payment.paymentIntentId(), reason), null);
+        });
     }
 
     private Optional<Released> cancel(UUID orderId, CancelReason reason) {

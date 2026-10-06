@@ -1,6 +1,7 @@
 package io.github.derekdiliu.dealdrop.order;
 
 import io.github.derekdiliu.dealdrop.order.messages.OrderEvents;
+import io.github.derekdiliu.dealdrop.order.messages.PaymentSucceeded;
 import io.github.derekdiliu.dealdrop.order.messages.PlaceOrder;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -167,6 +168,54 @@ class OrderApiTests {
         PlaceOrder again = request(customer, deal, 1, 1, 1, "1010", false);
         orderService.place(again);
         assertThat(orders.existsById(again.orderId())).isTrue();
+    }
+
+    @Test
+    void paymentFromQueueMarksOrderPaidOnce() throws Exception {
+        UUID customer = UUID.randomUUID();
+        PlaceOrder request = request(customer, UUID.randomUUID(), 10, 2, 1, "1010", false);
+        orderService.place(request);
+        long total = orders.findById(request.orderId()).orElseThrow().getTotalCents();
+        PaymentSucceeded payment = new PaymentSucceeded(request.orderId(), "pi_test_1", total, "nzd");
+
+        rabbit.convertAndSend(Messaging.PAYMENT_EVENTS, PaymentSucceeded.ROUTING_KEY, payment);
+        await().atMost(Duration.ofSeconds(10))
+                .until(() -> orders.findById(request.orderId()).orElseThrow().getStatus() == OrderStatus.PAID);
+        orderService.markPaid(payment);
+
+        mvc.perform(get("/api/order/orders/" + request.orderId()).header("Authorization", TestJwt.bearerFor(customer)))
+                .andExpect(jsonPath("$.status").value("PAID"))
+                .andExpect(jsonPath("$.paidAt").isNotEmpty());
+        assertThat(outboxRoutingKeys(jdbc, request.orderId())).doesNotContain(OrderEvents.PAYMENT_REJECTED);
+        // Paid orders keep their stock and can no longer be cancelled by the customer.
+        mvc.perform(post("/api/order/orders/" + request.orderId() + "/cancel")
+                        .header("Authorization", TestJwt.bearerFor(customer)))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void paymentForCancelledOrderIsRejectedForRefund() {
+        UUID customer = UUID.randomUUID();
+        PlaceOrder request = request(customer, UUID.randomUUID(), 10, 2, 1, "1010", false);
+        orderService.place(request);
+        long total = orders.findById(request.orderId()).orElseThrow().getTotalCents();
+        orderService.expire(request.orderId());
+
+        orderService.markPaid(new PaymentSucceeded(request.orderId(), "pi_late", total, "nzd"));
+
+        assertThat(orders.findById(request.orderId()).orElseThrow().getStatus()).isEqualTo(OrderStatus.CANCELLED);
+        assertThat(outboxRoutingKeys(jdbc, request.orderId())).endsWith(OrderEvents.PAYMENT_REJECTED);
+    }
+
+    @Test
+    void paymentForWrongAmountIsRejected() {
+        PlaceOrder request = request(UUID.randomUUID(), UUID.randomUUID(), 10, 2, 1, "1010", false);
+        orderService.place(request);
+
+        orderService.markPaid(new PaymentSucceeded(request.orderId(), "pi_short", 100, "nzd"));
+
+        assertThat(orders.findById(request.orderId()).orElseThrow().getStatus()).isEqualTo(OrderStatus.PENDING_PAYMENT);
+        assertThat(outboxRoutingKeys(jdbc, request.orderId())).endsWith(OrderEvents.PAYMENT_REJECTED);
     }
 
     @Test

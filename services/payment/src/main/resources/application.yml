@@ -4,9 +4,54 @@ server:
 spring:
   application:
     name: payment
+  config:
+    # Local secrets live in the repository root's .env (git-ignored). Both paths are listed so it is
+    # found whether the service starts from the repository root or from its module directory (IDE default).
+    import: optional:file:.env[.properties],optional:file:../../.env[.properties]
   threads:
     virtual:
       enabled: true
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/payment}
+    username: ${DB_USERNAME:dealdrop}
+    password: ${DB_PASSWORD:dealdrop}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  mvc:
+    problemdetails:
+      enabled: true
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:dealdrop}
+    password: ${RABBITMQ_PASSWORD:dealdrop}
+    # A webhook is only acknowledged to Stripe once the broker has confirmed the payment event.
+    publisher-confirm-type: simple
+    listener:
+      simple:
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: 5
+          initial-interval: 1s
+          multiplier: 2
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${IDENTITY_URL:http://localhost:8081}/.well-known/jwks.json
+          issuer-uri: ${JWT_ISSUER:dealdrop-identity}
+
+dealdrop:
+  services:
+    order-url: ${ORDER_URL:http://localhost:8083}
+  stripe:
+    # Test-mode keys (sk_test_...). The webhook secret (whsec_...) comes from `stripe listen` locally,
+    # or from the webhook endpoint in the Stripe dashboard when deployed.
+    secret-key: ${STRIPE_SECRET_KEY:}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
 
 management:
   endpoints:

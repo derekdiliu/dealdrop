@@ -1,6 +1,8 @@
 package io.github.derekdiliu.dealdrop.payment;
 
+import io.github.derekdiliu.dealdrop.payment.Messaging.PaymentEvents;
 import io.github.derekdiliu.dealdrop.payment.Payment.Status;
+import io.github.derekdiliu.dealdrop.payment.messages.Messages.PaymentSucceeded;
 import io.github.derekdiliu.dealdrop.payment.orders.OrderClient;
 import io.github.derekdiliu.dealdrop.payment.orders.OrderClient.OrderSummary;
 import io.github.derekdiliu.dealdrop.payment.stripe.PaymentProvider;
@@ -30,11 +32,13 @@ class PaymentService {
     private final OrderClient orders;
     private final PaymentProvider provider;
     private final PaymentRepository payments;
+    private final PaymentEvents events;
 
-    PaymentService(OrderClient orders, PaymentProvider provider, PaymentRepository payments) {
+    PaymentService(OrderClient orders, PaymentProvider provider, PaymentRepository payments, PaymentEvents events) {
         this.orders = orders;
         this.provider = provider;
         this.payments = payments;
+        this.events = events;
     }
 
     /** Returns what the browser needs to collect the payment, creating the PaymentIntent on first use. */
@@ -60,6 +64,20 @@ class PaymentService {
             // Another request for the same order got there first; Stripe returned it the same intent.
         }
         return new StartedPayment(orderId, intent.id(), intent.clientSecret(), order.totalCents(), currency);
+    }
+
+    /**
+     * Stripe says the payment went through. The event is passed on before anything is recorded here, so if
+     * this fails the webhook fails, Stripe retries, and nothing is lost; the order service ignores repeats.
+     */
+    void succeeded(UUID orderId, String paymentIntentId, long amountCents, String currency) {
+        events.succeeded(new PaymentSucceeded(orderId, paymentIntentId, amountCents, currency));
+        payments.findByPaymentIntentId(paymentIntentId)
+                .filter(payment -> payment.getStatus() == Status.PENDING)
+                .ifPresent(payment -> {
+                    payment.moveTo(Status.SUCCEEDED);
+                    payments.save(payment);
+                });
     }
 
     /** Stops the customer paying for an order that no longer exists. */

@@ -51,6 +51,7 @@ class GatewayRoutingTests {
         registry.add("dealdrop.services.catalog-url", () -> stubUrl);
         registry.add("dealdrop.services.order-url", () -> stubUrl);
         registry.add("dealdrop.services.flash-sale-url", () -> stubUrl);
+        registry.add("dealdrop.services.payment-url", () -> stubUrl);
     }
 
     @AfterAll
@@ -150,6 +151,22 @@ class GatewayRoutingTests {
     }
 
     @Test
+    void stripeWebhookReachesPaymentWithoutTokenButPaymentsNeedOne() throws Exception {
+        HttpResponse<String> webhook = send(HttpRequest.newBuilder(gateway("/api/payment/webhooks/stripe"))
+                .header("Stripe-Signature", "t=1,v1=abc")
+                .POST(HttpRequest.BodyPublishers.ofString("{}")));
+        assertThat(webhook.statusCode()).isEqualTo(200);
+        assertThat(lastForwarded.get().getRequestHeaders().getFirst("Stripe-Signature")).isEqualTo("t=1,v1=abc");
+        lastForwarded.set(null);
+
+        HttpResponse<String> start = send(HttpRequest.newBuilder(
+                        gateway("/api/payment/orders/8a6e0804-2bd0-4672-b79d-d97027f9071b/payment-intent"))
+                .POST(HttpRequest.BodyPublishers.noBody()));
+        assertThat(start.statusCode()).isEqualTo(401);
+        assertThat(lastForwarded.get()).isNull();
+    }
+
+    @Test
     void healthIsPublic() throws Exception {
         assertThat(send(HttpRequest.newBuilder(gateway("/actuator/health")).GET()).statusCode()).isEqualTo(200);
     }
@@ -189,7 +206,7 @@ class GatewayRoutingTests {
             HttpServer server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
             String jwks = new JWKSet(SIGNING_KEY.toPublicJWK()).toString();
             server.createContext("/.well-known/jwks.json", exchange -> respond(exchange, jwks));
-            for (String prefix : new String[] {"/api/identity/", "/api/catalog/", "/api/order/", "/api/flash-sale/"}) {
+            for (String prefix : new String[] {"/api/identity/", "/api/catalog/", "/api/order/", "/api/flash-sale/", "/api/payment/"}) {
                 server.createContext(prefix, exchange -> {
                     lastForwarded.set(exchange);
                     respond(exchange, "{\"ok\":true}");

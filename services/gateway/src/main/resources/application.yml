@@ -7,6 +7,7 @@ dealdrop:
     catalog-url: ${CATALOG_URL:http://localhost:8082}
     order-url: ${ORDER_URL:http://localhost:8083}
     flash-sale-url: ${FLASH_SALE_URL:http://localhost:8085}
+    payment-url: ${PAYMENT_URL:http://localhost:8084}
 
 spring:
   application:
@@ -35,6 +36,10 @@ spring:
               uri: ${dealdrop.services.flash-sale-url}
               predicates:
                 - Path=/api/flash-sale/**
+            - id: payment
+              uri: ${dealdrop.services.payment-url}
+              predicates:
+                - Path=/api/payment/**
   security:
     oauth2:
       resourceserver:

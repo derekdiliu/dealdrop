@@ -24,6 +24,8 @@ class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/identity/register", "/api/identity/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/catalog/deals", "/api/catalog/deals/*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/flash-sale/deals/*/stock").permitAll()
+                        // Stripe can't send a token; the payment service verifies Stripe's signature instead.
+                        .requestMatchers(HttpMethod.POST, "/api/payment/webhooks/stripe").permitAll()
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));

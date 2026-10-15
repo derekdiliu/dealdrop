@@ -47,10 +47,11 @@ PostgreSQL (database per service) · Redis · RabbitMQ · Cloudflare R2
 
 ## Getting started
 
-Prerequisites: JDK 21, Node.js 22, Docker, and a Cloudflare R2 bucket for deal images.
+Prerequisites: JDK 21, Node.js 22, Docker, a Cloudflare R2 bucket for deal images, and a Stripe
+account in test mode.
 
 ```bash
-# Local settings: admin account and R2 credentials (see .env.example)
+# Local settings: admin account, R2 and Stripe credentials (see .env.example)
 cp .env.example .env
 
 # Infrastructure: Postgres, Redis, RabbitMQ
@@ -175,6 +176,36 @@ order + outbox row ──(relay, publisher confirms)──► payment-timeout.wa
 Cancelling is a conditional update (`WHERE status = 'PENDING_PAYMENT'`) that returns the stock and the
 customer's allowance, so a duplicate message or a race with a customer cancellation is harmless.
 
+## Payments
+
+Payments use Stripe in NZD. The browser collects card details with Stripe.js, so they never touch
+this system; the payment service only creates the PaymentIntent and listens for Stripe's webhook.
+
+```
+POST /api/payment/orders/{id}/payment-intent   (customer's token is forwarded to fetch the order,
+  │                                              which also proves the order is theirs)
+  ▼
+Stripe PaymentIntent (idempotency key = order id) ──► client secret ──► Stripe.js in the browser
+  ...customer pays...
+Stripe ──webhook, signature verified──► payment ──payment.succeeded──► order: PENDING_PAYMENT → PAID
+```
+
+- **The webhook is the source of truth**, not the browser: payments can complete after the page closes,
+  for example after a 3-D Secure check. The webhook only returns 200 once the event is safely in
+  RabbitMQ; otherwise Stripe retries it.
+- **A payment that lands after the order timed out is refunded automatically.** Marking an order paid is
+  a conditional update (`WHERE status = 'PENDING_PAYMENT' AND total_cents = :amount`); if it no longer
+  applies, the order service publishes `order.payment-rejected` and the payment service refunds in full.
+  Cancelled orders also cancel their PaymentIntent, so this is rare.
+- Stripe sits behind an interface; tests use a mock, plus Stripe's official `stripe-mock` image to check
+  real API requests, and sign webhook payloads with a test secret.
+
+Locally, Stripe needs a public URL to deliver webhooks to; the Stripe CLI forwards them:
+
+```bash
+stripe listen --forward-to localhost:8080/api/payment/webhooks/stripe   # prints the whsec_ secret
+```
+
 ## Load test
 
 [`loadtest/flash-sale.js`](loadtest/flash-sale.js) (k6) creates a deal, signs up one customer per
@@ -202,7 +233,7 @@ Afterwards every dead-letter queue and the outbox were empty.
 - [x] **M1** Identity and gateway: registration, login, JWT validation
 - [x] **M2** Catalog: deal management, image upload, storefront listing
 - [x] **M3a** Orders: atomic stock and purchase limits, NZ shipping, outbox, unpaid-order timeout
-- [ ] **M3b** Payments: Stripe checkout and webhooks
+- [x] **M3b** Payments: Stripe PaymentIntents, webhooks, automatic refunds
 - [x] **M4** Flash sale: Redis gate, async order creation, load test with zero overselling
 - [ ] **M5** Storefront polish, back-office UI and deployment
 - [ ] Refresh tokens and login rate limiting

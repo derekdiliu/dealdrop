@@ -13,7 +13,7 @@
     <artifactId>catalog</artifactId>
 
     <properties>
-        <awssdk.version>2.46.7</awssdk.version>
+        <awssdk.version>2.56.0</awssdk.version>
     </properties>
 
     <dependencyManagement>

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { StateBadge, TimingLine } from "@/components/deal-timing";
+import { buttonClass } from "@/components/styles";
 import { getDeal, getRemainingStock } from "@/lib/deals";
 import { discountPercent, formatNzd } from "@/lib/format";
 
@@ -69,6 +70,12 @@ async function DealDetail({ params }: Pick<PageProps<"/deals/[id]">, "params">) 
               : `${remaining} of ${deal.stock} left`}
           {" · "}Limit {deal.perCustomerLimit} per customer
         </p>
+        {deal.state === "LIVE" && remaining !== 0 && (
+          // Checkout asks the customer to sign in first if needed.
+          <Link href={`/deals/${deal.id}/checkout`} className={`block text-center ${buttonClass}`}>
+            Buy now
+          </Link>
+        )}
         <p className="whitespace-pre-line leading-relaxed text-zinc-700 dark:text-zinc-300">
           {deal.description}
         </p>

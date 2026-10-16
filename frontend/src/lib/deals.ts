@@ -1,3 +1,7 @@
+import "server-only";
+
+import { apiFetch } from "@/lib/api";
+
 // Server-side access to the catalog API through the gateway.
 
 export type DealState = "UPCOMING" | "LIVE" | "ENDED";
@@ -18,10 +22,8 @@ export type Deal = {
   state: DealState;
 };
 
-const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:8080";
-
 export async function getDeals(): Promise<Deal[]> {
-  const response = await fetch(`${API_BASE_URL}/api/catalog/deals`);
+  const response = await apiFetch("/api/catalog/deals");
   if (!response.ok) {
     throw new Error(`Failed to load deals: HTTP ${response.status}`);
   }
@@ -31,7 +33,7 @@ export async function getDeals(): Promise<Deal[]> {
 /** Units still available while a deal is live; null if the sale service can't be reached. */
 export async function getRemainingStock(id: string): Promise<number | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/flash-sale/deals/${encodeURIComponent(id)}/stock`);
+    const response = await apiFetch(`/api/flash-sale/deals/${encodeURIComponent(id)}/stock`);
     if (!response.ok) {
       return null;
     }
@@ -44,7 +46,7 @@ export async function getRemainingStock(id: string): Promise<number | null> {
 
 /** Returns null when the deal does not exist or is not published. */
 export async function getDeal(id: string): Promise<Deal | null> {
-  const response = await fetch(`${API_BASE_URL}/api/catalog/deals/${encodeURIComponent(id)}`);
+  const response = await apiFetch(`/api/catalog/deals/${encodeURIComponent(id)}`);
   // 400 means the id is not a valid UUID, which is just another unknown deal.
   if (response.status === 404 || response.status === 400) {
     return null;

@@ -61,8 +61,9 @@ docker compose up -d --wait
 ./mvnw verify
 java -jar services/gateway/target/gateway-0.1.0-SNAPSHOT.jar   # or run any service from your IDE
 
-# Frontend (talks to the gateway; override with API_BASE_URL)
+# Frontend: talks to the gateway; Stripe publishable key optional (see frontend/.env.example)
 cd frontend
+cp .env.example .env.local
 npm install
 npm run dev
 ```
@@ -206,6 +207,19 @@ Locally, Stripe needs a public URL to deliver webhooks to; the Stripe CLI forwar
 stripe listen --forward-to localhost:8080/api/payment/webhooks/stripe   # prints the whsec_ secret
 ```
 
+## Storefront
+
+Next.js (App Router, Cache Components). Page shells are prerendered; deals, orders and the signed-in
+user stream in per request.
+
+- **Sign-in uses the backend-for-frontend pattern.** The access token lives in an `httpOnly` cookie
+  that page scripts can't read. Server components and server actions attach it to API calls, and the
+  few browser-side calls (polling a purchase, starting a payment) go through small Next.js route
+  handlers that do the same, so the token never reaches client JavaScript and no CORS setup is needed.
+- **Checkout:** address form → flash-sale purchase (202) → the page polls until the order exists →
+  order page with a countdown to the payment deadline, Stripe's Payment Element, and cancel.
+- Signing in or out ends with a full page load, so nothing cached for the previous identity is reused.
+
 ## Load test
 
 [`loadtest/flash-sale.js`](loadtest/flash-sale.js) (k6) creates a deal, signs up one customer per
@@ -235,5 +249,7 @@ Afterwards every dead-letter queue and the outbox were empty.
 - [x] **M3a** Orders: atomic stock and purchase limits, NZ shipping, outbox, unpaid-order timeout
 - [x] **M3b** Payments: Stripe PaymentIntents, webhooks, automatic refunds
 - [x] **M4** Flash sale: Redis gate, async order creation, load test with zero overselling
-- [ ] **M5** Storefront polish, back-office UI and deployment
+- [x] **M5a** Storefront: sign-in, checkout, order tracking, Stripe payment page
+- [ ] **M5b** Back-office UI
+- [ ] **M5c** Deployment (VPS + Vercel)
 - [ ] Refresh tokens and login rate limiting

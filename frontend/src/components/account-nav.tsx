@@ -15,6 +15,11 @@ export async function AccountNav() {
   }
   return (
     <nav className="flex items-center gap-4 text-sm">
+      {user.isAdmin && (
+        <Link href="/admin" className="font-medium hover:underline">
+          Admin
+        </Link>
+      )}
       <Link href="/orders" className="font-medium hover:underline">
         My orders
       </Link>

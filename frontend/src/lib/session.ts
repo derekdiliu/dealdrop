@@ -1,15 +1,15 @@
 import "server-only";
 
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 // The access token lives in an httpOnly cookie: page scripts can't read it, so an XSS bug can't
 // steal it. Server code attaches it to API calls on the browser's behalf.
 const COOKIE = "dealdrop_session";
 
-export type SessionUser = { id: string; email: string };
+export type SessionUser = { id: string; email: string; isAdmin: boolean };
 
-type Claims = { sub: string; email: string };
+type Claims = { sub: string; email: string; roles?: string[] };
 
 export async function saveSession(accessToken: string, expiresInSeconds: number) {
   (await cookies()).set(COOKIE, accessToken, {
@@ -37,7 +37,7 @@ export async function getToken(): Promise<string | null> {
 export async function getUser(): Promise<SessionUser | null> {
   const token = await getToken();
   const claims = token ? decode(token) : null;
-  return claims ? { id: claims.sub, email: claims.email } : null;
+  return claims ? { id: claims.sub, email: claims.email, isAdmin: isAdmin(claims) } : null;
 }
 
 /** The token, or a redirect to sign in that brings the customer back to `returnTo` afterwards. */
@@ -47,6 +47,23 @@ export async function requireToken(returnTo: string): Promise<string> {
     redirect(`/login?next=${encodeURIComponent(returnTo)}`);
   }
   return token;
+}
+
+/**
+ * Like requireToken, but anyone who isn't an admin gets a not-found page. This only hides the back
+ * office: the backend checks the role itself on every admin call.
+ */
+export async function requireAdminToken(returnTo: string): Promise<string> {
+  const token = await requireToken(returnTo);
+  const claims = decode(token);
+  if (!claims || !isAdmin(claims)) {
+    notFound();
+  }
+  return token;
+}
+
+function isAdmin(claims: Claims): boolean {
+  return claims.roles?.includes("ADMIN") ?? false;
 }
 
 /** Reads the claims for display. Not a security check: the signature is verified by the backend. */

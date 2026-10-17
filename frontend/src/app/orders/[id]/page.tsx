@@ -4,30 +4,34 @@ import { Suspense } from "react";
 
 import { cancelOrder } from "@/app/actions/orders";
 import { OrderStatusBadge, zoneLabels } from "@/components/order-bits";
+import { PaymentConfirming } from "@/components/payment-confirming";
 import { PaymentCountdown } from "@/components/payment-countdown";
+import { PaymentPanel } from "@/components/payment-panel";
 import { formatNzDateTime, formatNzd } from "@/lib/format";
 import { getOrder } from "@/lib/orders";
 import { requireToken } from "@/lib/session";
 
-export default function OrderPage({ params }: PageProps<"/orders/[id]">) {
+export default function OrderPage({ params, searchParams }: PageProps<"/orders/[id]">) {
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">
       <Link href="/orders" className="text-sm text-zinc-500 hover:underline">
         ← My orders
       </Link>
       <Suspense fallback={<p className="mt-6 text-zinc-500">Loading order…</p>}>
-        <OrderDetail params={params} />
+        <OrderDetail params={params} searchParams={searchParams} />
       </Suspense>
     </main>
   );
 }
 
-async function OrderDetail({ params }: Pick<PageProps<"/orders/[id]">, "params">) {
+async function OrderDetail({ params, searchParams }: Pick<PageProps<"/orders/[id]">, "params" | "searchParams">) {
   const { id } = await params;
   const order = await getOrder(await requireToken(`/orders/${id}`), id);
   if (!order) {
     notFound();
   }
+  // Stripe appends redirect_status when it sends the customer back after paying.
+  const returnedFromStripe = (await searchParams).redirect_status === "succeeded";
   const address = order.shippingAddress;
   const subtotal = order.unitPriceCents * order.quantity;
 
@@ -41,12 +45,19 @@ async function OrderDetail({ params }: Pick<PageProps<"/orders/[id]">, "params">
 
         {order.status === "PENDING_PAYMENT" && (
           <div className="space-y-4 rounded-lg border border-amber-300 p-4 dark:border-amber-700">
-            <PaymentCountdown expiresAt={order.expiresAt} />
-            <form action={cancelOrder.bind(null, order.id)}>
-              <button type="submit" className="text-sm text-zinc-500 hover:underline">
-                Cancel order
-              </button>
-            </form>
+            {returnedFromStripe ? (
+              <PaymentConfirming />
+            ) : (
+              <>
+                <PaymentCountdown expiresAt={order.expiresAt} />
+                <PaymentPanel orderId={order.id} />
+                <form action={cancelOrder.bind(null, order.id)}>
+                  <button type="submit" className="text-sm text-zinc-500 hover:underline">
+                    Cancel order
+                  </button>
+                </form>
+              </>
+            )}
           </div>
         )}
         {order.status === "PAID" && order.paidAt && (

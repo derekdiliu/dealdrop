@@ -1,18 +1,27 @@
 "use client";
 
-import type { InputHTMLAttributes } from "react";
+import type { InputHTMLAttributes, TextareaHTMLAttributes } from "react";
 import { useFormStatus } from "react-dom";
 
 import { buttonClass } from "@/components/styles";
+
+const inputClass =
+  "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:focus:border-zinc-100";
 
 export function Field({ label, ...input }: { label: string } & InputHTMLAttributes<HTMLInputElement>) {
   return (
     <label className="block text-sm">
       <span className="font-medium">{label}</span>
-      <input
-        {...input}
-        className="mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:focus:border-zinc-100"
-      />
+      <input {...input} className={inputClass} />
+    </label>
+  );
+}
+
+export function TextArea({ label, ...textarea }: { label: string } & TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <label className="block text-sm">
+      <span className="font-medium">{label}</span>
+      <textarea {...textarea} className={inputClass} />
     </label>
   );
 }

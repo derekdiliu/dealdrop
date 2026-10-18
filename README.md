@@ -219,6 +219,10 @@ user stream in per request.
 - **Checkout:** address form → flash-sale purchase (202) → the page polls until the order exists →
   order page with a countdown to the payment deadline, Stripe's Payment Element, and cancel.
 - Signing in or out ends with a full page load, so nothing cached for the previous identity is reused.
+- **Back office** (`/admin`, shown to tokens whose `roles` include `ADMIN`): deal list, draft form with
+  times entered in NZ time and sent with their offset, publish and delete. Images go from the browser
+  straight to R2 with the presigned URL, so the bucket needs a CORS rule allowing `PUT` with
+  `Content-Type` from the site's origin.
 
 ## Load test
 
@@ -250,6 +254,6 @@ Afterwards every dead-letter queue and the outbox were empty.
 - [x] **M3b** Payments: Stripe PaymentIntents, webhooks, automatic refunds
 - [x] **M4** Flash sale: Redis gate, async order creation, load test with zero overselling
 - [x] **M5a** Storefront: sign-in, checkout, order tracking, Stripe payment page
-- [ ] **M5b** Back-office UI
+- [x] **M5b** Back-office UI: deal list, draft form, image upload, publish
 - [ ] **M5c** Deployment (VPS + Vercel)
 - [ ] Refresh tokens and login rate limiting

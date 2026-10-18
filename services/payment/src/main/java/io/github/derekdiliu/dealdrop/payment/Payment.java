@@ -83,6 +83,14 @@ public class Payment {
         return status;
     }
 
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
     public enum Status {
         /** Created; the customer has not paid yet (or a card was declined and they can try again). */
         PENDING,

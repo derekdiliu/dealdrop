@@ -44,6 +44,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -209,6 +210,25 @@ class PaymentApiTests {
             verify(provider).refund("pi_late", orderId);
             assertThat(payments.findById(orderId)).get().extracting(Payment::getStatus).isEqualTo(Status.REFUNDED);
         });
+    }
+
+    @Test
+    void adminsSeeAnOrdersPaymentIncludingRefunds() throws Exception {
+        UUID orderId = startedPayment("pi_admin");
+        Payment payment = payments.findById(orderId).orElseThrow();
+        payment.moveTo(Status.REFUNDED);
+        payments.save(payment);
+
+        mvc.perform(get("/api/payment/admin/payments/" + orderId).header("Authorization", TestJwt.adminBearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paymentIntentId").value("pi_admin"))
+                .andExpect(jsonPath("$.amountCents").value(16697))
+                .andExpect(jsonPath("$.status").value("REFUNDED"));
+        mvc.perform(get("/api/payment/admin/payments/" + UUID.randomUUID()).header("Authorization", TestJwt.adminBearer()))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/payment/admin/payments/" + orderId)
+                        .header("Authorization", TestJwt.bearerFor(UUID.randomUUID())))
+                .andExpect(status().isForbidden());
     }
 
     /** A payment row as if the customer had started paying. */

@@ -34,12 +34,20 @@ public class TestJwt {
     }
 
     public static String bearerFor(UUID userId) {
+        return bearer(userId, "CUSTOMER");
+    }
+
+    public static String adminBearer() {
+        return bearer(UUID.randomUUID(), "ADMIN");
+    }
+
+    private static String bearer(UUID userId, String role) {
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .issuer("dealdrop-identity")
                 .subject(userId.toString())
                 .issuedAt(Instant.now())
                 .expiresAt(Instant.now().plusSeconds(600))
-                .claim("roles", List.of("CUSTOMER"))
+                .claim("roles", List.of(role))
                 .build();
         String token = new NimbusJwtEncoder(new ImmutableJWKSet<>(new JWKSet(KEY)))
                 .encode(JwtEncoderParameters.from(JwsHeader.with(SignatureAlgorithm.RS256).build(), claims))

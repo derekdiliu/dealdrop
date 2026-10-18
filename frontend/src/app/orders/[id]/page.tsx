@@ -3,11 +3,11 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { cancelOrder } from "@/app/actions/orders";
-import { OrderStatusBadge, zoneLabels } from "@/components/order-bits";
+import { DeliveryAddress, OrderStatusBadge, OrderSummary } from "@/components/order-bits";
 import { PaymentConfirming } from "@/components/payment-confirming";
 import { PaymentCountdown } from "@/components/payment-countdown";
 import { PaymentPanel } from "@/components/payment-panel";
-import { formatNzDateTime, formatNzd } from "@/lib/format";
+import { formatNzDateTime } from "@/lib/format";
 import { getOrder } from "@/lib/orders";
 import { requireToken } from "@/lib/session";
 
@@ -32,8 +32,6 @@ async function OrderDetail({ params, searchParams }: Pick<PageProps<"/orders/[id
   }
   // Stripe appends redirect_status when it sends the customer back after paying.
   const returnedFromStripe = (await searchParams).redirect_status === "succeeded";
-  const address = order.shippingAddress;
-  const subtotal = order.unitPriceCents * order.quantity;
 
   return (
     <div className="mt-6 grid gap-8 md:grid-cols-[1fr_20rem]">
@@ -73,56 +71,11 @@ async function OrderDetail({ params, searchParams }: Pick<PageProps<"/orders/[id
 
         <div>
           <h2 className="font-medium">Delivery to</h2>
-          <address className="mt-1 not-italic text-zinc-600 dark:text-zinc-400">
-            {address.recipientName}
-            <br />
-            {address.line1}
-            {address.line2 && (
-              <>
-                <br />
-                {address.line2}
-              </>
-            )}
-            {address.suburb && (
-              <>
-                <br />
-                {address.suburb}
-              </>
-            )}
-            <br />
-            {address.city} {address.postcode}
-            <br />
-            {address.phone}
-          </address>
+          <DeliveryAddress address={order.shippingAddress} />
         </div>
       </section>
 
-      <aside className="h-fit space-y-2 rounded-lg border border-zinc-200 p-4 text-sm dark:border-zinc-800">
-        <p className="font-medium">
-          <Link href={`/deals/${order.dealId}`} className="hover:underline">
-            {order.dealTitle}
-          </Link>
-        </p>
-        <Row label={`${order.quantity} × ${formatNzd(order.unitPriceCents)}`} value={formatNzd(subtotal)} />
-        <Row
-          label={`Shipping (${zoneLabels[order.shippingZone]}${address.ruralDelivery ? ", rural" : ""})`}
-          value={formatNzd(order.shippingCents)}
-        />
-        <div className="border-t border-zinc-200 pt-2 dark:border-zinc-800">
-          <Row label="Total" value={formatNzd(order.totalCents)} strong />
-          <Row label="Includes GST" value={formatNzd(order.gstCents)} />
-        </div>
-        <p className="pt-2 text-zinc-500">Ordered {formatNzDateTime(order.createdAt)}</p>
-      </aside>
+      <OrderSummary order={order} dealHref={`/deals/${order.dealId}`} />
     </div>
-  );
-}
-
-function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
-  return (
-    <p className={`flex justify-between gap-4 ${strong ? "font-semibold" : ""}`}>
-      <span>{label}</span>
-      <span>{value}</span>
-    </p>
   );
 }

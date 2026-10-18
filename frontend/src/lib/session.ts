@@ -75,7 +75,16 @@ function decode(token: string): Claims | null {
   }
 }
 
-/** Only same-site paths, so a crafted link can't send people elsewhere after signing in. */
+/**
+ * Only same-site paths, so a crafted link can't send people elsewhere after signing in. The path is
+ * resolved the way a browser would, which also catches tricks like "/\evil.example" that browsers
+ * read as "//evil.example".
+ */
 export function safeReturnPath(path: unknown): string {
-  return typeof path === "string" && path.startsWith("/") && !path.startsWith("//") ? path : "/";
+  if (typeof path !== "string" || !path.startsWith("/")) {
+    return "/";
+  }
+  const base = "http://same-site.invalid";
+  const url = new URL(path, base);
+  return url.origin === base ? url.pathname + url.search + url.hash : "/";
 }

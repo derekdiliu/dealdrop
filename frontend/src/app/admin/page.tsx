@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { AdminDealBadge } from "@/components/admin-bits";
+import { AdminDealBadge, AdminTabs } from "@/components/admin-bits";
 import { secondaryButtonClass } from "@/components/styles";
 import { getAdminDeals } from "@/lib/admin-deals";
 import { formatNzDateTime, formatNzd } from "@/lib/format";
@@ -27,6 +27,7 @@ async function DealTable({ searchParams }: Pick<PageProps<"/admin">, "searchPara
 
   return (
     <>
+      <AdminTabs current="deals" />
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold tracking-tight">Deals</h1>
         <Link href="/admin/deals/new" className={secondaryButtonClass}>

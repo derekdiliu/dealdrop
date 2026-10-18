@@ -79,9 +79,14 @@ function PublishedDeal({ deal }: { deal: AdminDeal }) {
           <dd>{formatNzDateTime(deal.endsAt)}</dd>
         </dl>
         <p className="whitespace-pre-line text-zinc-700 dark:text-zinc-300">{deal.description}</p>
-        <Link href={`/deals/${deal.id}`} className="inline-block font-medium hover:underline">
-          View on the storefront →
-        </Link>
+        <p className="flex gap-6">
+          <Link href={`/admin/orders?dealId=${deal.id}`} className="font-medium hover:underline">
+            View orders →
+          </Link>
+          <Link href={`/deals/${deal.id}`} className="font-medium hover:underline">
+            View on the storefront →
+          </Link>
+        </p>
       </div>
     </div>
   );

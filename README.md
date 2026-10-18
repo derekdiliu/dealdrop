@@ -177,6 +177,10 @@ order + outbox row ──(relay, publisher confirms)──► payment-timeout.wa
 Cancelling is a conditional update (`WHERE status = 'PENDING_PAYMENT'`) that returns the stock and the
 customer's allowance, so a duplicate message or a race with a customer cancellation is harmless.
 
+Admins can list every order, newest first and filtered by `status` and `dealId`, at
+`GET /api/order/admin/orders`; `GET /api/payment/admin/payments/{orderId}` shows the order's payment,
+including whether it was refunded.
+
 ## Payments
 
 Payments use Stripe in NZD. The browser collects card details with Stripe.js, so they never touch
@@ -220,7 +224,8 @@ user stream in per request.
   order page with a countdown to the payment deadline, Stripe's Payment Element, and cancel.
 - Signing in or out ends with a full page load, so nothing cached for the previous identity is reused.
 - **Back office** (`/admin`, shown to tokens whose `roles` include `ADMIN`): deal list, draft form with
-  times entered in NZ time and sent with their offset, publish and delete. Images go from the browser
+  times entered in NZ time and sent with their offset, publish and delete; orders filtered by status or
+  deal, each with its delivery address and payment, including refunds. Images go from the browser
   straight to R2 with the presigned URL, so the bucket needs a CORS rule allowing `PUT` with
   `Content-Type` from the site's origin.
 

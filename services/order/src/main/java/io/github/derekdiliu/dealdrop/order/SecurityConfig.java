@@ -17,6 +17,8 @@ class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health/**", "/actuator/info", "/error").permitAll()
+                        // Roles come from the token's "roles" claim (see application.yml).
+                        .requestMatchers("/api/order/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/order/**").authenticated()
                         .anyRequest().denyAll())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));

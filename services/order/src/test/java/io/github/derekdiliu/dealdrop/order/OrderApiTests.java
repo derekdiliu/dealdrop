@@ -19,6 +19,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static io.github.derekdiliu.dealdrop.order.OrderFixtures.outboxRoutingKeys;
 import static io.github.derekdiliu.dealdrop.order.OrderFixtures.remainingStock;
@@ -233,5 +234,38 @@ class OrderApiTests {
         mvc.perform(post("/api/order/orders/" + orderId + "/cancel").header("Authorization", someoneElse))
                 .andExpect(status().isNotFound());
         mvc.perform(get("/api/order/orders")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void adminsSeeEveryOrderNewestFirstFilteredByStatusAndDeal() throws Exception {
+        UUID deal = UUID.randomUUID();
+        PlaceOrder pending = request(deal, 10, 2, 1);
+        PlaceOrder expired = request(deal, 10, 2, 1);
+        PlaceOrder otherDeal = request(UUID.randomUUID(), 10, 2, 1);
+        Stream.of(pending, expired, otherDeal).forEach(orderService::place);
+        orderService.expire(expired.orderId());
+        String admin = TestJwt.adminBearer();
+
+        mvc.perform(get("/api/order/admin/orders").param("dealId", deal.toString()).header("Authorization", admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page.totalElements").value(2))
+                .andExpect(jsonPath("$.content[0].id").value(expired.orderId().toString()))
+                .andExpect(jsonPath("$.content[1].id").value(pending.orderId().toString()));
+        mvc.perform(get("/api/order/admin/orders").param("dealId", deal.toString()).param("status", "CANCELLED")
+                        .header("Authorization", admin))
+                .andExpect(jsonPath("$.page.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].cancelReason").value("PAYMENT_TIMEOUT"));
+        mvc.perform(get("/api/order/admin/orders/" + otherDeal.orderId()).header("Authorization", admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.shippingAddress.recipientName").value("Aroha Smith"));
+        mvc.perform(get("/api/order/admin/orders/" + UUID.randomUUID()).header("Authorization", admin))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void customersCannotUseTheAdminApi() throws Exception {
+        mvc.perform(get("/api/order/admin/orders").header("Authorization", TestJwt.bearerFor(UUID.randomUUID())))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/order/admin/orders")).andExpect(status().isUnauthorized());
     }
 }

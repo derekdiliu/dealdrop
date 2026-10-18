@@ -40,6 +40,8 @@ spring:
         jwt:
           jwk-set-uri: ${IDENTITY_URL:http://localhost:8081}/.well-known/jwks.json
           issuer-uri: ${JWT_ISSUER:dealdrop-identity}
+          authorities-claim-name: roles
+          authority-prefix: ROLE_
 
 dealdrop:
   order:

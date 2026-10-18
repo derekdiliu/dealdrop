@@ -17,6 +17,9 @@ import io.github.derekdiliu.dealdrop.order.shipping.ShippingZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -91,6 +94,22 @@ class OrderService {
 
     Order getFor(UUID userId, UUID orderId) {
         return orders.findByIdAndUserId(orderId, userId).orElseThrow(() -> ApiErrors.notFound("Order not found."));
+    }
+
+    /** Every customer's orders for the back office, optionally narrowed to one status and/or deal. */
+    Page<Order> all(OrderStatus status, UUID dealId, Pageable pageable) {
+        Specification<Order> filter = Specification.unrestricted();
+        if (status != null) {
+            filter = filter.and((order, cb) -> cb.equal(order.get("status"), status));
+        }
+        if (dealId != null) {
+            filter = filter.and((order, cb) -> cb.equal(order.get("dealId"), dealId));
+        }
+        return orders.findAll(filter, pageable);
+    }
+
+    Order get(UUID orderId) {
+        return orders.findById(orderId).orElseThrow(() -> ApiErrors.notFound("Order not found."));
     }
 
     Order cancelByCustomer(UUID userId, UUID orderId) {

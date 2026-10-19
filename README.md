@@ -70,7 +70,9 @@ npm run dev
 
 RabbitMQ management UI: http://localhost:15672 (dealdrop / dealdrop).
 
-Integration tests use Testcontainers, so Docker must be running for `./mvnw verify`.
+Integration tests use Testcontainers, so Docker must be running for `./mvnw verify`. Frontend unit
+tests (Vitest) cover NZ time conversion, the deal form's validation and the sign-in return path; run
+them with `npm test` in `frontend`, nothing else needs to be running.
 
 ## Authentication
 

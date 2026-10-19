@@ -13,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
@@ -42,6 +43,9 @@ class AuthApiTests {
 
     @Autowired
     private MockMvc mvc;
+
+    @Autowired
+    private JdbcClient jdbc;
 
     @Test
     void registerLoginAndFetchProfile() throws Exception {
@@ -119,6 +123,113 @@ class AuthApiTests {
                 .andExpect(jsonPath("$.keys[0]", not(hasKey("p"))));
     }
 
+    @Test
+    void refreshTokenIsSwappedForANewPairOnEachUse() throws Exception {
+        String email = registered();
+        String first = JsonPath.read(loginBody(email), "$.refreshToken");
+
+        String body = refresh(first)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.expiresIn").value(900))
+                .andExpect(jsonPath("$.refreshExpiresIn").value(30 * 24 * 3600))
+                .andReturn().getResponse().getContentAsString();
+        String second = JsonPath.read(body, "$.refreshToken");
+
+        assertThat(second).isNotEqualTo(first);
+        mvc.perform(get("/api/identity/me").header("Authorization", "Bearer " + JsonPath.read(body, "$.accessToken")))
+                .andExpect(jsonPath("$.email").value(email));
+        refresh(second).andExpect(status().isOk());
+    }
+
+    @Test
+    void reusingAnOldRefreshTokenEndsThatSignIn() throws Exception {
+        String email = registered();
+        String first = JsonPath.read(loginBody(email), "$.refreshToken");
+        String second = JsonPath.read(refresh(first).andReturn().getResponse().getContentAsString(), "$.refreshToken");
+        String otherDevice = JsonPath.read(loginBody(email), "$.refreshToken");
+        // Past the grace window for the browser's own concurrent requests.
+        jdbc.sql("UPDATE refresh_tokens SET used_at = used_at - INTERVAL '1 minute' WHERE token_hash = :hash")
+                .param("hash", RefreshTokenService.hash(first))
+                .update();
+
+        refresh(first).andExpect(status().isUnauthorized());
+
+        refresh(second).andExpect(status().isUnauthorized());
+        refresh(otherDevice).andExpect(status().isOk());
+    }
+
+    @Test
+    void repeatsWithinTheGraceWindowAreAllowed() throws Exception {
+        String token = JsonPath.read(loginBody(registered()), "$.refreshToken");
+
+        refresh(token).andExpect(status().isOk());
+        refresh(token).andExpect(status().isOk());
+    }
+
+    @Test
+    void signingOutEndsTheSignIn() throws Exception {
+        String token = JsonPath.read(loginBody(registered()), "$.refreshToken");
+
+        logout(token).andExpect(status().isNoContent());
+
+        refresh(token).andExpect(status().isUnauthorized());
+        logout("never-issued").andExpect(status().isNoContent());
+    }
+
+    @Test
+    void expiredAndUnknownRefreshTokensAreRejected() throws Exception {
+        String token = JsonPath.read(loginBody(registered()), "$.refreshToken");
+        jdbc.sql("UPDATE refresh_tokens SET expires_at = now() - INTERVAL '1 second' WHERE token_hash = :hash")
+                .param("hash", RefreshTokenService.hash(token))
+                .update();
+
+        refresh(token).andExpect(status().isUnauthorized());
+        refresh("never-issued")
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.detail").value("Please sign in again."));
+    }
+
+    @Test
+    void onlyAHashOfTheRefreshTokenIsStored() throws Exception {
+        String token = JsonPath.read(loginBody(registered()), "$.refreshToken");
+
+        assertThat(storedTokens(token)).isZero();
+        assertThat(storedTokens(RefreshTokenService.hash(token))).isOne();
+    }
+
+    private String registered() throws Exception {
+        String email = uniqueEmail();
+        register(email, PASSWORD, "Wiremu").andExpect(status().isCreated());
+        return email;
+    }
+
+    private String loginBody(String email) throws Exception {
+        return login(email, PASSWORD).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+    }
+
+    private ResultActions refresh(String refreshToken) throws Exception {
+        return mvc.perform(post("/api/identity/refresh")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"refreshToken": "%s"}
+                        """.formatted(refreshToken)));
+    }
+
+    private ResultActions logout(String refreshToken) throws Exception {
+        return mvc.perform(post("/api/identity/logout")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"refreshToken": "%s"}
+                        """.formatted(refreshToken)));
+    }
+
+    private long storedTokens(String tokenHash) {
+        return jdbc.sql("SELECT count(*) FROM refresh_tokens WHERE token_hash = :hash")
+                .param("hash", tokenHash)
+                .query(Long.class)
+                .single();
+    }
+
     private ResultActions register(String email, String password, String displayName) throws Exception {
         return mvc.perform(post("/api/identity/register")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -139,7 +250,7 @@ class AuthApiTests {
         String body = login(email, password)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.tokenType").value("Bearer"))
-                .andExpect(jsonPath("$.expiresIn").value(3600))
+                .andExpect(jsonPath("$.expiresIn").value(900))
                 .andReturn().getResponse().getContentAsString();
         return JsonPath.read(body, "$.accessToken");
     }

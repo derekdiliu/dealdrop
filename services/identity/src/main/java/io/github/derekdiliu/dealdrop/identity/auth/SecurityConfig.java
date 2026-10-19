@@ -43,7 +43,9 @@ class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/api/identity/register", "/api/identity/login").permitAll()
+                        // Refresh and logout carry a refresh token instead of an access token.
+                        .requestMatchers(HttpMethod.POST, "/api/identity/register", "/api/identity/login",
+                                "/api/identity/refresh", "/api/identity/logout").permitAll()
                         .requestMatchers(HttpMethod.GET, JwksController.PATH).permitAll()
                         .requestMatchers("/actuator/health/**", "/actuator/info", "/error").permitAll()
                         .anyRequest().authenticated())

@@ -30,10 +30,16 @@ dealdrop:
     password: ${ADMIN_PASSWORD:}
   jwt:
     issuer: ${JWT_ISSUER:dealdrop-identity}
-    ttl: ${JWT_TTL:PT1H}
+    # Short-lived: the frontend swaps its refresh token for a new pair when this runs out.
+    ttl: ${JWT_TTL:PT15M}
     # Signing key pair as PEM resources, e.g. DEALDROP_JWT_PRIVATEKEY=file:/run/secrets/jwt-private.pem
     # and DEALDROP_JWT_PUBLICKEY=file:/run/secrets/jwt-public.pem. When unset, an ephemeral key pair
     # is generated at startup, so issued tokens do not survive a restart.
+  refresh-token:
+    # Each use issues a new token valid for this long, so customers stay signed in while they keep visiting.
+    ttl: P30D
+    # A token used again within this window is the browser sending several requests at once, not theft.
+    reuse-grace: PT30S
 
 management:
   endpoints:

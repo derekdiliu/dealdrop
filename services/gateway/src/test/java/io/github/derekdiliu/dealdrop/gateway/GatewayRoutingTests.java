@@ -66,11 +66,13 @@ class GatewayRoutingTests {
 
     @Test
     void publicEndpointsAreForwardedWithoutToken() throws Exception {
-        HttpResponse<String> response = send(HttpRequest.newBuilder(gateway("/api/identity/login"))
-                .POST(HttpRequest.BodyPublishers.ofString("{}")));
+        for (String path : List.of("/api/identity/login", "/api/identity/refresh", "/api/identity/logout")) {
+            HttpResponse<String> response = send(HttpRequest.newBuilder(gateway(path))
+                    .POST(HttpRequest.BodyPublishers.ofString("{}")));
 
-        assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(lastForwarded.get().getRequestURI().getPath()).isEqualTo("/api/identity/login");
+            assertThat(response.statusCode()).isEqualTo(200);
+            assertThat(lastForwarded.get().getRequestURI().getPath()).isEqualTo(path);
+        }
     }
 
     @Test

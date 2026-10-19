@@ -33,11 +33,14 @@ class AuthController {
     private final UserService userService;
     private final AuthenticationManager authenticationManager;
     private final TokenService tokenService;
+    private final RefreshTokenService refreshTokens;
 
-    AuthController(UserService userService, AuthenticationManager authenticationManager, TokenService tokenService) {
+    AuthController(UserService userService, AuthenticationManager authenticationManager, TokenService tokenService,
+                   RefreshTokenService refreshTokens) {
         this.userService = userService;
         this.authenticationManager = authenticationManager;
         this.tokenService = tokenService;
+        this.refreshTokens = refreshTokens;
     }
 
     @PostMapping("/register")
@@ -50,7 +53,24 @@ class AuthController {
     TokenResponse login(@Valid @RequestBody LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
                 UsernamePasswordAuthenticationToken.unauthenticated(request.email(), request.password()));
-        return tokenService.issue((UserAccount) authentication.getPrincipal());
+        UserAccount account = (UserAccount) authentication.getPrincipal();
+        return tokenService.issue(account, refreshTokens.startFamily(account.id()));
+    }
+
+    /** Swaps a refresh token for a new access token and refresh token. The old refresh token is used up. */
+    @PostMapping("/refresh")
+    TokenResponse refresh(@Valid @RequestBody RefreshRequest request) {
+        RefreshTokenService.Rotated rotated = refreshTokens.rotate(request.refreshToken())
+                .orElseThrow(AuthController::signInAgain);
+        UserAccount account = userService.findAccount(rotated.userId()).orElseThrow(AuthController::signInAgain);
+        return tokenService.issue(account, rotated.next());
+    }
+
+    /** Ends the sign-in the refresh token belongs to. Access tokens already issued last until they expire. */
+    @PostMapping("/logout")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void logout(@Valid @RequestBody RefreshRequest request) {
+        refreshTokens.revoke(request.refreshToken());
     }
 
     @GetMapping("/me")
@@ -66,6 +86,11 @@ class AuthController {
         return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "Invalid email or password.");
     }
 
+    private static ErrorResponseException signInAgain() {
+        return new ErrorResponseException(HttpStatus.UNAUTHORIZED,
+                ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "Please sign in again."), null);
+    }
+
     record RegisterRequest(
             @NotBlank @Email @Size(max = 320) String email,
             // BCrypt only uses the first 72 bytes of a password.
@@ -74,6 +99,9 @@ class AuthController {
     }
 
     record LoginRequest(@NotBlank String email, @NotBlank String password) {
+    }
+
+    record RefreshRequest(@NotBlank @Size(max = 100) String refreshToken) {
     }
 
     record UserResponse(UUID id, String email, String displayName, String role) {

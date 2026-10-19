@@ -22,7 +22,7 @@ class TokenService {
         this.properties = properties;
     }
 
-    TokenResponse issue(UserAccount account) {
+    TokenResponse issue(UserAccount account, RefreshTokenService.Issued refreshToken) {
         Instant now = Instant.now();
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .issuer(properties.issuer())
@@ -34,6 +34,7 @@ class TokenService {
                 .build();
         JwsHeader header = JwsHeader.with(SignatureAlgorithm.RS256).build();
         String token = encoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
-        return new TokenResponse(token, "Bearer", properties.ttl().toSeconds());
+        return new TokenResponse(token, "Bearer", properties.ttl().toSeconds(), refreshToken.token(),
+                refreshToken.expiresIn());
     }
 }

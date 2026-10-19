@@ -58,6 +58,10 @@ public class UserService implements UserDetailsService {
         return users.findById(id);
     }
 
+    public Optional<UserAccount> findAccount(UUID id) {
+        return users.findById(id).map(UserAccount::from);
+    }
+
     @Override
     public UserAccount loadUserByUsername(String email) {
         return users.findByEmail(normalizeEmail(email))

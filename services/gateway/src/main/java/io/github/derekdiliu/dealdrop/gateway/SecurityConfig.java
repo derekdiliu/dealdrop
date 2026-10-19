@@ -21,7 +21,9 @@ class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/api/identity/register", "/api/identity/login").permitAll()
+                        // Refresh and logout carry a refresh token instead of an access token.
+                        .requestMatchers(HttpMethod.POST, "/api/identity/register", "/api/identity/login",
+                                "/api/identity/refresh", "/api/identity/logout").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/catalog/deals", "/api/catalog/deals/*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/flash-sale/deals/*/stock").permitAll()
                         // Stripe can't send a token; the payment service verifies Stripe's signature instead.

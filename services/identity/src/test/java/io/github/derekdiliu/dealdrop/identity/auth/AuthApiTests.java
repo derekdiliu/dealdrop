@@ -23,14 +23,22 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -195,6 +203,67 @@ class AuthApiTests {
 
         assertThat(storedTokens(token)).isZero();
         assertThat(storedTokens(RefreshTokenService.hash(token))).isOne();
+    }
+
+    @Test
+    void signInAttemptsAreLimitedPerEmail() throws Exception {
+        String email = registered();
+        for (int i = 0; i < 5; i++) {
+            login(email, "wrong-password").andExpect(status().isUnauthorized());
+        }
+
+        // Even the right password is refused until the window passes.
+        login(email, PASSWORD)
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().exists("Retry-After"))
+                .andExpect(jsonPath("$.detail").value(containsString("Too many sign-in attempts")));
+        loginForToken(registered(), PASSWORD);
+    }
+
+    @Test
+    void guessesSentAllAtOnceGetNoMoreThroughThanTheLimit() throws Exception {
+        String email = registered();
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<Integer>> statuses;
+
+        try (ExecutorService pool = Executors.newFixedThreadPool(20)) {
+            statuses = IntStream.range(0, 20).mapToObj(i -> pool.submit(() -> {
+                start.await();
+                return login(email, "wrong-password").andReturn().getResponse().getStatus();
+            })).toList();
+            start.countDown();
+        }
+
+        List<Integer> results = new ArrayList<>();
+        for (Future<Integer> status : statuses) {
+            results.add(status.get());
+        }
+        assertThat(results).filteredOn(status -> status == 401).hasSize(5);
+        assertThat(results).filteredOn(status -> status == 429).hasSize(15);
+    }
+
+    @Test
+    void signingInResetsTheCount() throws Exception {
+        String email = registered();
+        for (int i = 0; i < 4; i++) {
+            login(email, "wrong-password").andExpect(status().isUnauthorized());
+        }
+        loginForToken(email, PASSWORD);
+
+        for (int i = 0; i < 4; i++) {
+            login(email, "wrong-password").andExpect(status().isUnauthorized());
+        }
+        loginForToken(email, PASSWORD);
+    }
+
+    @Test
+    void unknownEmailsAreLimitedTheSameWay() throws Exception {
+        String email = uniqueEmail();
+        for (int i = 0; i < 5; i++) {
+            login(email, PASSWORD).andExpect(status().isUnauthorized());
+        }
+
+        login(email, PASSWORD).andExpect(status().isTooManyRequests());
     }
 
     private String registered() throws Exception {

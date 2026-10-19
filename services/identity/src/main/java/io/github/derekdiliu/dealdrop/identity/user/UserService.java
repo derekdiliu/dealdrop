@@ -69,7 +69,7 @@ public class UserService implements UserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException("No account for this email"));
     }
 
-    private static String normalizeEmail(String email) {
+    public static String normalizeEmail(String email) {
         return email.strip().toLowerCase(Locale.ROOT);
     }
 }

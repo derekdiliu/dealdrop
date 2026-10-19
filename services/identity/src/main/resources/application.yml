@@ -15,6 +15,10 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/identity}
     username: ${DB_USERNAME:dealdrop}
     password: ${DB_PASSWORD:dealdrop}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
   jpa:
     open-in-view: false
     hibernate:
@@ -40,6 +44,10 @@ dealdrop:
     ttl: P30D
     # A token used again within this window is the browser sending several requests at once, not theft.
     reuse-grace: PT30S
+  login:
+    # Sign-in attempts allowed per email in each window.
+    max-attempts: 5
+    window: PT15M
 
 management:
   endpoints:

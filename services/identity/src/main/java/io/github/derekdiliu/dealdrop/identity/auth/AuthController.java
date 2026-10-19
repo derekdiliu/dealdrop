@@ -7,8 +7,10 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -34,13 +36,15 @@ class AuthController {
     private final AuthenticationManager authenticationManager;
     private final TokenService tokenService;
     private final RefreshTokenService refreshTokens;
+    private final LoginAttempts loginAttempts;
 
     AuthController(UserService userService, AuthenticationManager authenticationManager, TokenService tokenService,
-                   RefreshTokenService refreshTokens) {
+                   RefreshTokenService refreshTokens, LoginAttempts loginAttempts) {
         this.userService = userService;
         this.authenticationManager = authenticationManager;
         this.tokenService = tokenService;
         this.refreshTokens = refreshTokens;
+        this.loginAttempts = loginAttempts;
     }
 
     @PostMapping("/register")
@@ -51,8 +55,10 @@ class AuthController {
 
     @PostMapping("/login")
     TokenResponse login(@Valid @RequestBody LoginRequest request) {
+        loginAttempts.record(request.email());
         Authentication authentication = authenticationManager.authenticate(
                 UsernamePasswordAuthenticationToken.unauthenticated(request.email(), request.password()));
+        loginAttempts.reset(request.email());
         UserAccount account = (UserAccount) authentication.getPrincipal();
         return tokenService.issue(account, refreshTokens.startFamily(account.id()));
     }
@@ -84,6 +90,16 @@ class AuthController {
     ProblemDetail loginFailed() {
         // Same response for unknown email and wrong password, so accounts cannot be enumerated via login.
         return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "Invalid email or password.");
+    }
+
+    @ExceptionHandler(LoginAttempts.TooManyAttempts.class)
+    ResponseEntity<ProblemDetail> tooManyAttempts(LoginAttempts.TooManyAttempts e) {
+        long minutes = Math.max(1, (e.retryAfter().toSeconds() + 59) / 60);
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS,
+                "Too many sign-in attempts. Please try again in " + minutes + (minutes == 1 ? " minute." : " minutes."));
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(e.retryAfter().toSeconds()))
+                .body(problem);
     }
 
     private static ErrorResponseException signInAgain() {

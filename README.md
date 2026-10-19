@@ -88,7 +88,21 @@ TOKEN=$(curl -s -X POST localhost:8080/api/identity/login -H 'Content-Type: appl
   -d '{"email":"kiri@example.co.nz","password":"kia-ora-1234"}' | jq -r .accessToken)
 
 curl localhost:8080/api/identity/me -H "Authorization: Bearer $TOKEN"
+
+# Swap the refresh token from the login response for a new pair; the old one is used up
+curl -X POST localhost:8080/api/identity/refresh -H 'Content-Type: application/json' \
+  -d "{\"refreshToken\":\"$REFRESH_TOKEN\"}"
 ```
+
+- **Access tokens last 15 minutes; refresh tokens 30 days from their last use.** Refresh tokens are
+  random strings stored only as SHA-256 hashes. Each use returns a new pair, and a token used twice
+  must have been copied, so its whole sign-in is revoked. A repeat within 30 seconds is allowed,
+  because a browser can send several requests at once when its access token runs out.
+  `POST /api/identity/logout` revokes the sign-in.
+- **Sign-in is limited to 5 attempts per email in 15 minutes**, counted in Redis before the password
+  is checked, so concurrent guesses get no more through (a test fires 20 at once and expects 5).
+  Unknown emails are counted the same way, so the limit doesn't reveal which accounts exist. Per-IP
+  limits belong in front of the frontend, since every sign-in reaches identity from the frontend's server.
 
 Errors use RFC 9457 problem details. Without configured keys, identity generates an ephemeral
 key pair on startup; set `DEALDROP_JWT_PRIVATEKEY` and `DEALDROP_JWT_PUBLICKEY` to PEM resources
@@ -222,6 +236,8 @@ user stream in per request.
   that page scripts can't read. Server components and server actions attach it to API calls, and the
   few browser-side calls (polling a purchase, starting a payment) go through small Next.js route
   handlers that do the same, so the token never reaches client JavaScript and no CORS setup is needed.
+  The refresh token sits in a second `httpOnly` cookie; when the access cookie runs out, a Next.js
+  proxy swaps it for new tokens before the page renders.
 - **Checkout:** address form → flash-sale purchase (202) → the page polls until the order exists →
   order page with a countdown to the payment deadline, Stripe's Payment Element, and cancel.
 - Signing in or out ends with a full page load, so nothing cached for the previous identity is reused.
@@ -263,4 +279,4 @@ Afterwards every dead-letter queue and the outbox were empty.
 - [x] **M5a** Storefront: sign-in, checkout, order tracking, Stripe payment page
 - [x] **M5b** Back-office UI: deal list, draft form, image upload, publish
 - [ ] **M5c** Deployment (VPS + Vercel)
-- [ ] Refresh tokens and login rate limiting
+- [x] Refresh tokens and login rate limiting

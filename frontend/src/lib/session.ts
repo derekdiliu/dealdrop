@@ -3,35 +3,36 @@ import "server-only";
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 
-// The access token lives in an httpOnly cookie: page scripts can't read it, so an XSS bug can't
-// steal it. Server code attaches it to API calls on the browser's behalf.
-const COOKIE = "dealdrop_session";
+import { ACCESS_COOKIE, REFRESH_COOKIE, storeTokens, type Tokens } from "@/lib/session-tokens";
+
+// The tokens live in httpOnly cookies (see session-tokens.ts). Server code attaches the access token to
+// API calls on the browser's behalf, and the proxy refreshes it when its cookie runs out.
 
 export type SessionUser = { id: string; email: string; isAdmin: boolean };
 
 type Claims = { sub: string; email: string; roles?: string[] };
 
-export async function saveSession(accessToken: string, expiresInSeconds: number) {
-  (await cookies()).set(COOKIE, accessToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: expiresInSeconds,
-  });
+export async function saveSession(tokens: Tokens) {
+  storeTokens(await cookies(), tokens);
 }
 
 export async function clearSession() {
-  (await cookies()).delete(COOKIE);
+  const jar = await cookies();
+  jar.delete(ACCESS_COOKIE);
+  jar.delete(REFRESH_COOKIE);
+}
+
+export async function getRefreshToken(): Promise<string | null> {
+  return (await cookies()).get(REFRESH_COOKIE)?.value ?? null;
 }
 
 /**
- * The current token, or null if signed out. Expiry isn't checked here: the cookie expires with the
- * token, and the backend verifies it on every call. (Reading the clock here would also stop Next.js
+ * The current access token, or null if signed out. Expiry isn't checked here: the cookie expires before
+ * the token, and the backend verifies it on every call. (Reading the clock here would also stop Next.js
  * from prerendering the pages that use it.)
  */
 export async function getToken(): Promise<string | null> {
-  return (await cookies()).get(COOKIE)?.value ?? null;
+  return (await cookies()).get(ACCESS_COOKIE)?.value ?? null;
 }
 
 export async function getUser(): Promise<SessionUser | null> {

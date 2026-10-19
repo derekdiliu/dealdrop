@@ -2,7 +2,7 @@
 
 import { apiFetch, problemMessage } from "@/lib/api";
 import { submittedValues } from "@/lib/forms";
-import { clearSession, safeReturnPath, saveSession } from "@/lib/session";
+import { clearSession, getRefreshToken, safeReturnPath, saveSession } from "@/lib/session";
 
 /**
  * Sign-in and sign-out return where to go rather than redirecting, and the browser then does a full
@@ -23,8 +23,7 @@ export async function signIn(_state: FormState, form: FormData): Promise<FormSta
   if (!response.ok) {
     return { error: await problemMessage(response), values: submittedValues(form) };
   }
-  const { accessToken, expiresIn } = await response.json();
-  await saveSession(accessToken, expiresIn);
+  await saveSession(await response.json());
   return { redirectTo: safeReturnPath(form.get("next")) };
 }
 
@@ -46,6 +45,12 @@ export async function register(_state: FormState, form: FormData): Promise<FormS
   return signIn({}, form);
 }
 
+/** Ends the sign-in on the server too, so the refresh token can't be used again. */
 export async function signOut() {
+  const refreshToken = await getRefreshToken();
+  if (refreshToken) {
+    // The cookies are cleared whether or not identity could be reached.
+    await apiFetch("/api/identity/logout", { method: "POST", body: JSON.stringify({ refreshToken }) }).catch(() => null);
+  }
   await clearSession();
 }

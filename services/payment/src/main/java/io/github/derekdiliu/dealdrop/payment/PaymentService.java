@@ -1,5 +1,6 @@
 package io.github.derekdiliu.dealdrop.payment;
 
+import io.github.derekdiliu.dealdrop.common.ApiErrors;
 import io.github.derekdiliu.dealdrop.payment.Messaging.PaymentEvents;
 import io.github.derekdiliu.dealdrop.payment.Payment.Status;
 import io.github.derekdiliu.dealdrop.payment.messages.Messages.PaymentSucceeded;

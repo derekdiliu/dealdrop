@@ -1,6 +1,7 @@
 package io.github.derekdiliu.dealdrop.catalog.deal;
 
 import io.github.derekdiliu.dealdrop.catalog.image.ImageStorage;
+import io.github.derekdiliu.dealdrop.common.Gst;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

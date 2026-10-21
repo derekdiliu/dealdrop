@@ -1,5 +1,6 @@
 package io.github.derekdiliu.dealdrop.payment;
 
+import io.github.derekdiliu.dealdrop.common.ApiErrors;
 import io.github.derekdiliu.dealdrop.payment.Payment.Status;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;

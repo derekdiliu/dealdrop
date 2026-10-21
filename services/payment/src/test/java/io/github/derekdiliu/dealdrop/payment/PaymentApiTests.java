@@ -9,6 +9,7 @@ import io.github.derekdiliu.dealdrop.payment.orders.OrderClient;
 import io.github.derekdiliu.dealdrop.payment.orders.OrderClient.OrderSummary;
 import io.github.derekdiliu.dealdrop.payment.stripe.PaymentProvider;
 import io.github.derekdiliu.dealdrop.payment.stripe.PaymentProvider.Intent;
+import io.github.derekdiliu.dealdrop.testsupport.TestJwt;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.AmqpConnectException;

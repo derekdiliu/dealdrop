@@ -2,6 +2,7 @@ package io.github.derekdiliu.dealdrop.flashsale;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
+import io.github.derekdiliu.dealdrop.common.ApiErrors;
 import io.github.derekdiliu.dealdrop.flashsale.catalog.CatalogDeal;
 import io.github.derekdiliu.dealdrop.flashsale.catalog.DealCatalog;
 import org.springframework.beans.factory.annotation.Value;

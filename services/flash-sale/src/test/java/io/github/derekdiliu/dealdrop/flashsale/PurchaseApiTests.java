@@ -8,6 +8,7 @@ import io.github.derekdiliu.dealdrop.flashsale.messaging.Messages.OrderPlaced;
 import io.github.derekdiliu.dealdrop.flashsale.messaging.Messages.OrderRejected;
 import io.github.derekdiliu.dealdrop.flashsale.messaging.Messages.RejectReason;
 import io.github.derekdiliu.dealdrop.flashsale.messaging.OrderRequests;
+import io.github.derekdiliu.dealdrop.testsupport.TestJwt;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.AmqpConnectException;

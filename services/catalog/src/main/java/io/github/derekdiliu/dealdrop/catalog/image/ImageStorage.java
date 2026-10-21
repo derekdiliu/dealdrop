@@ -1,6 +1,6 @@
 package io.github.derekdiliu.dealdrop.catalog.image;
 
-import io.github.derekdiliu.dealdrop.catalog.ApiErrors;
+import io.github.derekdiliu.dealdrop.common.ApiErrors;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;

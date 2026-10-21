@@ -1,8 +1,8 @@
 package io.github.derekdiliu.dealdrop.catalog.deal;
 
 import com.jayway.jsonpath.JsonPath;
-import io.github.derekdiliu.dealdrop.catalog.TestJwt;
 import io.github.derekdiliu.dealdrop.catalog.TestcontainersConfiguration;
+import io.github.derekdiliu.dealdrop.testsupport.TestJwt;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -41,7 +41,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class DealApiTests {
 
     private static final ZoneId AUCKLAND = ZoneId.of("Pacific/Auckland");
-    private static final String ADMIN = TestJwt.bearer("ADMIN");
+    private static final String ADMIN = TestJwt.adminBearer();
 
     @Autowired
     private MockMvc mvc;
@@ -141,7 +141,7 @@ class DealApiTests {
     @Test
     void backOfficeRequiresAdminRole() throws Exception {
         mvc.perform(get("/api/catalog/admin/deals")).andExpect(status().isUnauthorized());
-        mvc.perform(get("/api/catalog/admin/deals").header("Authorization", TestJwt.bearer("CUSTOMER")))
+        mvc.perform(get("/api/catalog/admin/deals").header("Authorization", TestJwt.bearerFor(UUID.randomUUID())))
                 .andExpect(status().isForbidden());
         mvc.perform(admin(get("/api/catalog/admin/deals")))
                 .andExpect(status().isOk())

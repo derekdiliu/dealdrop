@@ -18,6 +18,8 @@
     <description>Flash-deal e-commerce platform for New Zealand</description>
 
     <modules>
+        <module>libs/common</module>
+        <module>libs/test-support</module>
         <module>services/gateway</module>
         <module>services/identity</module>
         <module>services/catalog</module>
@@ -45,6 +47,16 @@
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>io.github.derekdiliu</groupId>
+                <artifactId>common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.derekdiliu</groupId>
+                <artifactId>test-support</artifactId>
+                <version>${project.version}</version>
+            </dependency>
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>

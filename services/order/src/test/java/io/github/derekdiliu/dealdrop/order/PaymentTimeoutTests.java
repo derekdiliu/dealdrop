@@ -2,6 +2,7 @@ package io.github.derekdiliu.dealdrop.order;
 
 import io.github.derekdiliu.dealdrop.order.messages.OrderEvents;
 import io.github.derekdiliu.dealdrop.order.messages.PlaceOrder;
+import io.github.derekdiliu.dealdrop.testsupport.TestJwt;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

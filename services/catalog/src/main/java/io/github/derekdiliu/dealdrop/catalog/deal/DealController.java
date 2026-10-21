@@ -1,6 +1,7 @@
 package io.github.derekdiliu.dealdrop.catalog.deal;
 
 import io.github.derekdiliu.dealdrop.catalog.image.ImageStorage;
+import io.github.derekdiliu.dealdrop.common.Gst;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;

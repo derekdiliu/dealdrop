@@ -1,5 +1,6 @@
 package io.github.derekdiliu.dealdrop.order;
 
+import io.github.derekdiliu.dealdrop.common.ApiErrors;
 import io.github.derekdiliu.dealdrop.order.Inventory.Released;
 import io.github.derekdiliu.dealdrop.order.messages.OrderEvents;
 import io.github.derekdiliu.dealdrop.order.messages.OrderEvents.OrderCancelled;

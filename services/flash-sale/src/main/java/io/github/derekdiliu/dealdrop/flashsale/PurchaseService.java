@@ -1,5 +1,6 @@
 package io.github.derekdiliu.dealdrop.flashsale;
 
+import io.github.derekdiliu.dealdrop.common.ApiErrors;
 import io.github.derekdiliu.dealdrop.flashsale.Purchases.Purchase;
 import io.github.derekdiliu.dealdrop.flashsale.StockGate.Outcome;
 import io.github.derekdiliu.dealdrop.flashsale.catalog.CatalogDeal;

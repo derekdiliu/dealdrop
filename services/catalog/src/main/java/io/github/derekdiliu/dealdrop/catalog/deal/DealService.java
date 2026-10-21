@@ -1,7 +1,7 @@
 package io.github.derekdiliu.dealdrop.catalog.deal;
 
-import io.github.derekdiliu.dealdrop.catalog.ApiErrors;
 import io.github.derekdiliu.dealdrop.catalog.image.ImageStorage;
+import io.github.derekdiliu.dealdrop.common.ApiErrors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;

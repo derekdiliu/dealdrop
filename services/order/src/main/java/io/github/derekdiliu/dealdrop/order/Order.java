@@ -1,5 +1,6 @@
 package io.github.derekdiliu.dealdrop.order;
 
+import io.github.derekdiliu.dealdrop.common.Gst;
 import io.github.derekdiliu.dealdrop.order.messages.PlaceOrder;
 import io.github.derekdiliu.dealdrop.order.shipping.ShippingZone;
 import jakarta.persistence.Column;

@@ -1,4 +1,4 @@
-package io.github.derekdiliu.dealdrop.catalog.deal;
+package io.github.derekdiliu.dealdrop.common;
 
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;

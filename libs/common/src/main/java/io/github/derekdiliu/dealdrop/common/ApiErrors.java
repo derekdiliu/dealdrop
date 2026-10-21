@@ -1,4 +1,4 @@
-package io.github.derekdiliu.dealdrop.catalog;
+package io.github.derekdiliu.dealdrop.common;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -22,6 +22,14 @@ public final class ApiErrors {
 
     public static ErrorResponseException conflict(String detail) {
         return of(HttpStatus.CONFLICT, detail);
+    }
+
+    public static ErrorResponseException tooManyRequests(String detail) {
+        return of(HttpStatus.TOO_MANY_REQUESTS, detail);
+    }
+
+    public static ErrorResponseException serviceUnavailable(String detail) {
+        return of(HttpStatus.SERVICE_UNAVAILABLE, detail);
     }
 
     private static ErrorResponseException of(HttpStatus status, String detail) {

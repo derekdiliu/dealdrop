@@ -224,7 +224,8 @@ Stripe ──webhook, signature verified──► payment ──payment.succeede
 Locally, Stripe needs a public URL to deliver webhooks to; the Stripe CLI forwards them:
 
 ```bash
-stripe listen --forward-to localhost:8080/api/payment/webhooks/stripe   # prints the whsec_ secret
+stripe listen --print-secret                      # the whsec_ secret, the same every run
+stripe listen --events payment_intent.succeeded --forward-to localhost:8080/api/payment/webhooks/stripe
 ```
 
 ## Storefront

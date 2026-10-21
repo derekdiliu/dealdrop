@@ -49,6 +49,9 @@ dealdrop:
     payment-timeout: PT15M
   outbox:
     poll-interval: PT1S
+    # Published messages are kept this long, then deleted.
+    retention: P7D
+    cleanup-interval: PT1H
   shipping:
     # NZD cents, GST-inclusive.
     north-island-cents: 699

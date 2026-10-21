@@ -178,6 +178,9 @@ The order service turns each admitted purchase into an order in one transaction:
 Each step is a single conditional statement, so concurrent buyers can never oversell or exceed a
 limit; a test fires 20 concurrent placements at 5 units and expects exactly 5 orders.
 
+Outbox messages are kept for 7 days after they are published, to show what was sent for an order,
+then deleted by an hourly job; unpublished messages are never deleted.
+
 Shipping is a flat rate by island, worked out from the postcode (0-6 North Island, 7-9 South Island),
 plus a surcharge for rural delivery addresses. GST is shown on the order total.
 

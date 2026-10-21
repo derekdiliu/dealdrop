@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { CheckoutForm } from "@/components/checkout-form";
-import { getDeal } from "@/lib/deals";
+import { getDeal, getRemainingStock } from "@/lib/deals";
 import { formatNzd } from "@/lib/format";
 import { requireToken } from "@/lib/session";
 
@@ -24,6 +24,8 @@ async function Checkout({ params }: Pick<PageProps<"/deals/[id]/checkout">, "par
   if (!deal) {
     notFound();
   }
+  // Same check as the deal page, so a link or bookmark to checkout doesn't offer a sold-out deal.
+  const remaining = deal.state === "LIVE" ? await getRemainingStock(deal.id) : null;
 
   return (
     <>
@@ -35,7 +37,14 @@ async function Checkout({ params }: Pick<PageProps<"/deals/[id]/checkout">, "par
         {deal.title} · {formatNzd(deal.priceCents)} each, incl. GST
       </p>
       <div className="mt-6">
-        {deal.state === "LIVE" ? (
+        {deal.state === "LIVE" && remaining === 0 ? (
+          <p>
+            Sorry, this deal has sold out.{" "}
+            <Link href="/" className="underline">
+              Browse other deals
+            </Link>
+          </p>
+        ) : deal.state === "LIVE" ? (
           <CheckoutForm dealId={deal.id} limit={deal.perCustomerLimit} />
         ) : (
           <p>This deal isn&apos;t on sale right now.</p>

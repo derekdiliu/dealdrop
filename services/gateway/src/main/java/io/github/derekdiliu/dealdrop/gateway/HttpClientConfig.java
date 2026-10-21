@@ -1,5 +1,6 @@
 package io.github.derekdiliu.dealdrop.gateway;
 
+import org.apache.hc.core5.util.TimeValue;
 import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -26,6 +27,11 @@ class HttpClientConfig {
                 .withConnectionManagerCustomizer(pool -> pool
                         .setMaxConnPerRoute(MAX_CONNECTIONS_PER_SERVICE)
                         .setMaxConnTotal(MAX_CONNECTIONS_TOTAL))
+                // Check every pooled connection before reuse (httpclient's default is only after 2 s idle).
+                // A backend that restarts closes the connections it had open; a POST sent on one fails
+                // and is not retried, so without the check each one costs a caller a 502.
+                .withConnectionConfigCustomizer(connection -> connection
+                        .setValidateAfterInactivity(TimeValue.ZERO_MILLISECONDS))
                 .withDefaultRequestConfigCustomizer(request -> request
                         .setConnectionRequestTimeout(MAX_WAIT_FOR_CONNECTION_SECONDS, TimeUnit.SECONDS));
     }

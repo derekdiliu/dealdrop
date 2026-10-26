@@ -21,7 +21,7 @@ export type AdminDeal = {
   perCustomerLimit: number;
   startsAt: string;
   endsAt: string;
-  status: "DRAFT" | "PUBLISHED";
+  status: "DRAFT" | "PUBLISHED" | "WITHDRAWN";
   state: DealState;
   createdAt: string;
   updatedAt: string;

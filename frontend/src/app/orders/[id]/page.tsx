@@ -8,7 +8,7 @@ import { PaymentConfirming } from "@/components/payment-confirming";
 import { PaymentCountdown } from "@/components/payment-countdown";
 import { PaymentPanel } from "@/components/payment-panel";
 import { formatNzDateTime } from "@/lib/format";
-import { getOrder } from "@/lib/orders";
+import { getOrder, type Order } from "@/lib/orders";
 import { requireToken } from "@/lib/session";
 
 export default function OrderPage({ params, searchParams }: PageProps<"/orders/[id]">) {
@@ -62,11 +62,7 @@ async function OrderDetail({ params, searchParams }: Pick<PageProps<"/orders/[id
           <p>Paid {formatNzDateTime(order.paidAt)}. Thanks! We&apos;ll let you know when it ships.</p>
         )}
         {order.status === "CANCELLED" && (
-          <p>
-            {order.cancelReason === "PAYMENT_TIMEOUT"
-              ? "This order was cancelled because it wasn't paid in time."
-              : "You cancelled this order."}
-          </p>
+          <p>{cancelMessages[order.cancelReason ?? "CUSTOMER"]}</p>
         )}
 
         <div>
@@ -79,3 +75,9 @@ async function OrderDetail({ params, searchParams }: Pick<PageProps<"/orders/[id
     </div>
   );
 }
+
+const cancelMessages: Record<NonNullable<Order["cancelReason"]>, string> = {
+  CUSTOMER: "You cancelled this order.",
+  PAYMENT_TIMEOUT: "This order was cancelled because it wasn't paid in time.",
+  DEAL_WITHDRAWN: "Sorry, this deal was withdrawn, so we cancelled your order. If you paid, it's been refunded in full.",
+};

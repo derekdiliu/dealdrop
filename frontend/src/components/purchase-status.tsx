@@ -4,9 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-type Outcome = "waiting" | "slow" | "sold-out" | "limit" | "not-found" | "signed-out";
+type Outcome = "waiting" | "slow" | "sold-out" | "limit" | "withdrawn" | "not-found" | "signed-out";
 
 const POLL_INTERVAL_MS = 1000;
+const rejections: Record<string, Outcome> = { SOLD_OUT: "sold-out", LIMIT_EXCEEDED: "limit", DEAL_WITHDRAWN: "withdrawn" };
 const GIVE_UP_AFTER_MS = 30_000;
 
 /** Follows a purchase until the order exists, then opens it. */
@@ -34,7 +35,7 @@ export function PurchaseStatus({ purchaseId }: { purchaseId: string }) {
             return router.replace(`/orders/${purchaseId}`);
           }
           if (purchase.status === "REJECTED") {
-            return setOutcome(purchase.reason === "SOLD_OUT" ? "sold-out" : "limit");
+            return setOutcome(rejections[purchase.reason ?? ""] ?? "limit");
           }
         }
       } catch {
@@ -60,6 +61,7 @@ export function PurchaseStatus({ purchaseId }: { purchaseId: string }) {
     slow: "This is taking longer than usual. Your order will appear in My orders shortly.",
     "sold-out": "Sorry, the last units sold just before your order was placed. You haven't been charged.",
     limit: "You've already reached the limit for this deal.",
+    withdrawn: "Sorry, this deal was withdrawn before your order was placed. You haven't been charged.",
     "not-found": "We couldn't find that purchase.",
     "signed-out": "Your session has expired. Sign in again to see your order in My orders.",
   };

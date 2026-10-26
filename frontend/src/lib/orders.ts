@@ -15,7 +15,7 @@ export type Order = {
   totalCents: number;
   gstCents: number;
   status: OrderStatus;
-  cancelReason: "CUSTOMER" | "PAYMENT_TIMEOUT" | null;
+  cancelReason: "CUSTOMER" | "PAYMENT_TIMEOUT" | "DEAL_WITHDRAWN" | null;
   shippingAddress: {
     recipientName: string;
     phone: string;

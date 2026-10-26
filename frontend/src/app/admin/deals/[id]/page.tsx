@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { AdminDealBadge } from "@/components/admin-bits";
 import { DealForm } from "@/components/deal-form";
 import { DraftActions } from "@/components/draft-actions";
+import { WithdrawAction } from "@/components/withdraw-action";
 import { type AdminDeal, getAdminDeal } from "@/lib/admin-deals";
 import { discountPercent, formatNzDateTime, formatNzd } from "@/lib/format";
 import { requireAdminToken } from "@/lib/session";
@@ -35,7 +36,7 @@ async function AdminDealDetail({ params }: Pick<PageProps<"/admin/deals/[id]">, 
       <div className="mt-4 flex items-center gap-3">
         <AdminDealBadge deal={deal} />
         <span className="text-sm text-zinc-500">
-          {deal.status === "DRAFT" ? "Last saved" : "Published"} {formatNzDateTime(deal.updatedAt)}
+          {statusLabels[deal.status]} {formatNzDateTime(deal.updatedAt)}
         </span>
       </div>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight">{deal.title}</h1>
@@ -55,6 +56,12 @@ async function AdminDealDetail({ params }: Pick<PageProps<"/admin/deals/[id]">, 
     </>
   );
 }
+
+const statusLabels: Record<AdminDeal["status"], string> = {
+  DRAFT: "Last saved",
+  PUBLISHED: "Published",
+  WITHDRAWN: "Withdrawn",
+};
 
 function PublishedDeal({ deal }: { deal: AdminDeal }) {
   return (
@@ -79,14 +86,20 @@ function PublishedDeal({ deal }: { deal: AdminDeal }) {
           <dd>{formatNzDateTime(deal.endsAt)}</dd>
         </dl>
         <p className="whitespace-pre-line text-zinc-700 dark:text-zinc-300">{deal.description}</p>
+        {deal.status === "WITHDRAWN" && (
+          <p>Off the storefront. Its orders were cancelled and paid ones refunded in full.</p>
+        )}
         <p className="flex gap-6">
           <Link href={`/admin/orders?dealId=${deal.id}`} className="font-medium hover:underline">
             View orders →
           </Link>
-          <Link href={`/deals/${deal.id}`} className="font-medium hover:underline">
-            View on the storefront →
-          </Link>
+          {deal.status === "PUBLISHED" && (
+            <Link href={`/deals/${deal.id}`} className="font-medium hover:underline">
+              View on the storefront →
+            </Link>
+          )}
         </p>
+        {deal.status === "PUBLISHED" && <WithdrawAction dealId={deal.id} />}
       </div>
     </div>
   );

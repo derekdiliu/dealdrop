@@ -63,9 +63,14 @@ function OrderOutcome({ order }: { order: Order }) {
     case "PAID":
       return <>Paid {order.paidAt && formatNzDateTime(order.paidAt)}.</>;
     case "CANCELLED":
-      return order.cancelReason === "PAYMENT_TIMEOUT"
-        ? <>Cancelled because it wasn&apos;t paid in time. The stock went back on sale.</>
-        : <>Cancelled by the customer. The stock went back on sale.</>;
+      switch (order.cancelReason) {
+        case "PAYMENT_TIMEOUT":
+          return <>Cancelled because it wasn&apos;t paid in time. The stock went back on sale.</>;
+        case "DEAL_WITHDRAWN":
+          return <>Cancelled because the deal was withdrawn. Any payment is refunded in full.</>;
+        default:
+          return <>Cancelled by the customer. The stock went back on sale.</>;
+      }
   }
 }
 

@@ -66,6 +66,18 @@ export async function publishDeal(dealId: string): Promise<FormState> {
   return {};
 }
 
+export async function withdrawDeal(dealId: string): Promise<FormState> {
+  const returnTo = `/admin/deals/${dealId}`;
+  const token = await requireToken(returnTo);
+  const response = await apiFetch(`/api/catalog/admin/deals/${encodeURIComponent(dealId)}/withdraw`, { method: "POST", token });
+  signInAgainIfExpired(response, returnTo);
+  if (!response.ok) {
+    return { error: await problemMessage(response) };
+  }
+  refresh();
+  return {};
+}
+
 export async function deleteDeal(dealId: string): Promise<FormState> {
   const returnTo = `/admin/deals/${dealId}`;
   const token = await requireToken(returnTo);

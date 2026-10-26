@@ -22,6 +22,13 @@ spring:
   mvc:
     problemdetails:
       enabled: true
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:dealdrop}
+    password: ${RABBITMQ_PASSWORD:dealdrop}
+    # The outbox relay waits for broker confirms before marking a message as published.
+    publisher-confirm-type: simple
   security:
     oauth2:
       resourceserver:
@@ -41,6 +48,11 @@ dealdrop:
     secret-access-key: ${R2_SECRET_ACCESS_KEY:}
     # Public base URL images are served from, e.g. https://pub-<id>.r2.dev or a custom domain.
     public-base-url: ${R2_PUBLIC_BASE_URL:}
+  outbox:
+    poll-interval: PT1S
+    # Published messages are kept this long, then deleted.
+    retention: P7D
+    cleanup-interval: PT1H
 
 management:
   endpoints:

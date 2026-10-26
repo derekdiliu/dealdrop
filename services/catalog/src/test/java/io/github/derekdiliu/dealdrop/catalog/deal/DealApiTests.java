@@ -3,7 +3,14 @@ package io.github.derekdiliu.dealdrop.catalog.deal;
 import com.jayway.jsonpath.JsonPath;
 import io.github.derekdiliu.dealdrop.catalog.TestcontainersConfiguration;
 import io.github.derekdiliu.dealdrop.testsupport.TestJwt;
+import io.github.derekdiliu.dealdrop.catalog.Messaging;
 import org.junit.jupiter.api.Test;
+import org.springframework.amqp.core.AmqpAdmin;
+import org.springframework.amqp.core.BindingBuilder;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.TopicExchange;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -17,6 +24,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -48,6 +56,12 @@ class DealApiTests {
 
     @Autowired
     private DealRepository repository;
+
+    @Autowired
+    private RabbitTemplate rabbit;
+
+    @Autowired
+    private AmqpAdmin amqpAdmin;
 
     @Test
     void draftIsHiddenUntilPublishedWithAnImage() throws Exception {
@@ -95,6 +109,46 @@ class DealApiTests {
                 .andExpect(status().isConflict());
         mvc.perform(admin(delete("/api/catalog/admin/deals/" + dealId))).andExpect(status().isConflict());
         mvc.perform(admin(post("/api/catalog/admin/deals/" + dealId + "/publish"))).andExpect(status().isConflict());
+    }
+
+    @Test
+    void withdrawingTakesTheDealOffSaleAndAnnouncesIt() throws Exception {
+        Queue captured = new Queue("test.deal-withdrawn", false);
+        amqpAdmin.declareQueue(captured);
+        amqpAdmin.declareBinding(BindingBuilder.bind(captured).to(new TopicExchange(Messaging.EVENTS))
+                .with(DealWithdrawn.ROUTING_KEY));
+        amqpAdmin.purgeQueue(captured.getName(), false);
+        String dealId = publishedDeal(hoursFromNow(-1), hoursFromNow(24));
+
+        mvc.perform(admin(post("/api/catalog/admin/deals/" + dealId + "/withdraw")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("WITHDRAWN"));
+
+        mvc.perform(get("/api/catalog/deals")).andExpect(jsonPath("$[*].id", not(hasItem(dealId))));
+        mvc.perform(get("/api/catalog/deals/" + dealId)).andExpect(status().isNotFound());
+        Message event = rabbit.receive(captured.getName(), 10_000);
+        assertThat(event).isNotNull();
+        assertThat(new String(event.getBody(), StandardCharsets.UTF_8)).isEqualTo("{\"dealId\":\"" + dealId + "\"}");
+
+        mvc.perform(admin(post("/api/catalog/admin/deals/" + dealId + "/withdraw")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("Deal is already withdrawn."));
+        assertThat(rabbit.receive(captured.getName(), 1_500)).isNull();
+    }
+
+    @Test
+    void onlyAdminsCanWithdrawAndOnlyPublishedDeals() throws Exception {
+        String draft = JsonPath.read(createDeal(dealJson(null, hoursFromNow(1), hoursFromNow(24)))
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        mvc.perform(admin(post("/api/catalog/admin/deals/" + draft + "/withdraw")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("Only published deals can be withdrawn."));
+
+        String published = publishedDeal(hoursFromNow(1), hoursFromNow(24));
+        mvc.perform(post("/api/catalog/admin/deals/" + published + "/withdraw")
+                        .header("Authorization", TestJwt.bearerFor(UUID.randomUUID())))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/catalog/deals/" + published)).andExpect(status().isOk());
     }
 
     @Test

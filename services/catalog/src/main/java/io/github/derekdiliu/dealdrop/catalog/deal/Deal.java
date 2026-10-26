@@ -77,6 +77,11 @@ public class Deal {
         this.updatedAt = Instant.now();
     }
 
+    void withdraw() {
+        this.status = DealStatus.WITHDRAWN;
+        this.updatedAt = Instant.now();
+    }
+
     DealState stateAt(Instant now) {
         return DealState.of(startsAt, endsAt, now);
     }

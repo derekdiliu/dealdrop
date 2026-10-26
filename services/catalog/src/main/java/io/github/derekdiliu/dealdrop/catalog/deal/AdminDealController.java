@@ -64,6 +64,11 @@ class AdminDealController {
         return AdminDealResponse.from(deals.publish(id), images, Instant.now());
     }
 
+    @PostMapping("/{id}/withdraw")
+    AdminDealResponse withdraw(@PathVariable UUID id) {
+        return AdminDealResponse.from(deals.withdraw(id), images, Instant.now());
+    }
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void delete(@PathVariable UUID id) {

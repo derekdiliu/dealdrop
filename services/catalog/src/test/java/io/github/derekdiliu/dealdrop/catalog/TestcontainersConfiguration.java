@@ -6,9 +6,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.test.context.DynamicPropertyRegistrar;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.postgresql.PostgreSQLContainer;
+import org.testcontainers.rabbitmq.RabbitMQContainer;
 
 /**
- * Real Postgres, plus S3Mock standing in for Cloudflare R2 so tests need no cloud credentials.
+ * Real Postgres and RabbitMQ, plus S3Mock standing in for Cloudflare R2 so tests need no cloud credentials.
  */
 @TestConfiguration(proxyBeanMethods = false)
 public class TestcontainersConfiguration {
@@ -20,6 +21,12 @@ public class TestcontainersConfiguration {
     @ServiceConnection
     PostgreSQLContainer postgresContainer() {
         return new PostgreSQLContainer("postgres:17-alpine");
+    }
+
+    @Bean
+    @ServiceConnection
+    RabbitMQContainer rabbitContainer() {
+        return new RabbitMQContainer("rabbitmq:4.1-alpine");
     }
 
     @Bean

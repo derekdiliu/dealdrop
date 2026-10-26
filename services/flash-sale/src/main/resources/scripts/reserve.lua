@@ -3,6 +3,7 @@
 -- KEYS[1] remaining stock            fs:{dealId}:stock
 -- KEYS[2] units held per customer    fs:{dealId}:held   (hash: userId -> quantity)
 -- KEYS[3] customer's attempt counter fs:{dealId}:attempts:{userId}
+-- KEYS[4] withdrawn marker           fs:{dealId}:withdrawn
 --
 -- ARGV[1] the deal's total stock, used to seed KEYS[1] the first time
 -- ARGV[2] userId
@@ -13,7 +14,11 @@
 -- ARGV[7] lifetime of the deal's keys in seconds
 --
 -- Returns the stock remaining after the reservation, or
---   -1 sold out, -2 customer limit reached, -3 too many attempts.
+--   -1 sold out, -2 customer limit reached, -3 too many attempts, -4 deal withdrawn.
+
+if redis.call('EXISTS', KEYS[4]) == 1 then
+    return -4
+end
 
 local attempts = redis.call('INCR', KEYS[3])
 if attempts == 1 then

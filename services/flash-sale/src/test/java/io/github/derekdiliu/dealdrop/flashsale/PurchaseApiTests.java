@@ -3,6 +3,7 @@ package io.github.derekdiliu.dealdrop.flashsale;
 import com.jayway.jsonpath.JsonPath;
 import io.github.derekdiliu.dealdrop.flashsale.catalog.CatalogDeal;
 import io.github.derekdiliu.dealdrop.flashsale.catalog.DealCatalog;
+import io.github.derekdiliu.dealdrop.flashsale.messaging.Messages.DealWithdrawn;
 import io.github.derekdiliu.dealdrop.flashsale.messaging.Messages.OrderCancelled;
 import io.github.derekdiliu.dealdrop.flashsale.messaging.Messages.OrderPlaced;
 import io.github.derekdiliu.dealdrop.flashsale.messaging.Messages.OrderRejected;
@@ -217,6 +218,39 @@ class PurchaseApiTests {
 
         await().atMost(Duration.ofSeconds(10)).until(() -> purchaseService.remaining(deal.id()) == 0);
         purchase(UUID.randomUUID(), deal.id(), 1, "1010").andExpect(status().isConflict());
+    }
+
+    @Test
+    void withdrawalStopsTheGateBeforeCachedDetailsExpire() throws Exception {
+        // The catalog mock keeps returning the deal, as every instance's cache would for a few seconds.
+        CatalogDeal deal = liveDeal(10, 1);
+        UUID customer = UUID.randomUUID();
+        UUID purchaseId = purchaseService.purchase(customer, deal.id(), 1, address("1010"));
+
+        rabbit.convertAndSend("catalog.events", "deal.withdrawn", new DealWithdrawn(deal.id()));
+
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> purchase(UUID.randomUUID(), deal.id(), 1, "1010")
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("Sorry, this deal is no longer available.")));
+
+        // Cancelling the deal's orders gives stock back, but the gate stays shut.
+        publish("order.cancelled", new OrderCancelled(purchaseId, customer, deal.id(), 1));
+        await().atMost(Duration.ofSeconds(10)).until(() -> purchaseService.remaining(deal.id()) == 10);
+        purchase(UUID.randomUUID(), deal.id(), 1, "1010").andExpect(status().isConflict());
+    }
+
+    @Test
+    void purchaseRejectedForAWithdrawnDealSaysSo() throws Exception {
+        CatalogDeal deal = liveDeal(10, 1);
+        UUID customer = UUID.randomUUID();
+        UUID purchaseId = purchaseService.purchase(customer, deal.id(), 1, address("1010"));
+
+        publish("order.rejected", new OrderRejected(purchaseId, customer, deal.id(), 1, RejectReason.DEAL_WITHDRAWN));
+
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() ->
+                mvc.perform(get("/api/flash-sale/purchases/" + purchaseId).header("Authorization", TestJwt.bearerFor(customer)))
+                        .andExpect(jsonPath("$.status").value("REJECTED"))
+                        .andExpect(jsonPath("$.reason").value("DEAL_WITHDRAWN")));
     }
 
     @Test

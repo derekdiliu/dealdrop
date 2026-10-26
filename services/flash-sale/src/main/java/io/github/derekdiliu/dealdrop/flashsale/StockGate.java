@@ -30,6 +30,8 @@ class StockGate {
     private static final Duration KEY_LIFETIME_AFTER_SALE = Duration.ofDays(1);
     // Must outlive any redelivery of the same order event.
     private static final Duration RELEASE_MARKER_LIFETIME = Duration.ofDays(7);
+    // Only needs to outlive cached deal details; after that the catalog itself reports the deal as gone.
+    private static final Duration WITHDRAWN_MARKER_LIFETIME = Duration.ofDays(1);
 
     private final StringRedisTemplate redis;
     private final int attemptsPerWindow;
@@ -45,7 +47,8 @@ class StockGate {
 
     Outcome reserve(CatalogDeal deal, UUID userId, int quantity) {
         Long result = redis.execute(RESERVE,
-                List.of(stockKey(deal.id()), heldKey(deal.id()), "fs:{" + deal.id() + "}:attempts:" + userId),
+                List.of(stockKey(deal.id()), heldKey(deal.id()), "fs:{" + deal.id() + "}:attempts:" + userId,
+                        withdrawnKey(deal.id())),
                 String.valueOf(deal.stock()), userId.toString(), String.valueOf(quantity),
                 String.valueOf(deal.perCustomerLimit()), String.valueOf(attemptsPerWindow),
                 String.valueOf(attemptWindow.toSeconds()), String.valueOf(keyLifetime(deal).toSeconds()));
@@ -53,6 +56,7 @@ class StockGate {
             case -1 -> Outcome.SOLD_OUT;
             case -2 -> Outcome.LIMIT_REACHED;
             case -3 -> Outcome.TOO_MANY_ATTEMPTS;
+            case -4 -> Outcome.WITHDRAWN;
             default -> Outcome.RESERVED;
         };
     }
@@ -73,6 +77,14 @@ class StockGate {
         redis.opsForValue().setIfPresent(stockKey(dealId), "0");
     }
 
+    /**
+     * The deal is off sale for good. A marker rather than zero stock, because cancelling its orders gives
+     * stock back. Shared by every instance, so none keeps selling from deal details it has cached.
+     */
+    void markWithdrawn(UUID dealId) {
+        redis.opsForValue().set(withdrawnKey(dealId), "1", WITHDRAWN_MARKER_LIFETIME);
+    }
+
     /** Empty until the first purchase attempt seeds the deal's stock. */
     Optional<Integer> remaining(UUID dealId) {
         return Optional.ofNullable(redis.opsForValue().get(stockKey(dealId))).map(Integer::valueOf);
@@ -91,10 +103,15 @@ class StockGate {
         return "fs:{" + dealId + "}:held";
     }
 
+    private static String withdrawnKey(UUID dealId) {
+        return "fs:{" + dealId + "}:withdrawn";
+    }
+
     enum Outcome {
         RESERVED,
         SOLD_OUT,
         LIMIT_REACHED,
-        TOO_MANY_ATTEMPTS
+        TOO_MANY_ATTEMPTS,
+        WITHDRAWN
     }
 }

@@ -5,7 +5,7 @@ import io.github.derekdiliu.dealdrop.flashsale.ShippingAddress;
 import java.util.UUID;
 
 /**
- * Message contracts shared with the order service (as JSON; each side keeps its own copy).
+ * Message contracts shared with the order and catalog services (as JSON; each side keeps its own copy).
  */
 public final class Messages {
 
@@ -36,6 +36,11 @@ public final class Messages {
 
     public enum RejectReason {
         SOLD_OUT,
-        LIMIT_EXCEEDED
+        LIMIT_EXCEEDED,
+        DEAL_WITHDRAWN
+    }
+
+    /** From the catalog: the deal is off sale for good. */
+    public record DealWithdrawn(UUID dealId) {
     }
 }

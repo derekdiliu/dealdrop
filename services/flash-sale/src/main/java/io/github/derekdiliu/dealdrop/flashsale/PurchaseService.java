@@ -53,6 +53,7 @@ class PurchaseService {
             case SOLD_OUT -> throw ApiErrors.conflict("Sorry, this deal has sold out.");
             case LIMIT_REACHED -> throw limitReached(deal);
             case TOO_MANY_ATTEMPTS -> throw ApiErrors.tooManyRequests("Too many attempts. Please wait a moment.");
+            case WITHDRAWN -> throw ApiErrors.conflict("Sorry, this deal is no longer available.");
             case RESERVED -> { }
         }
 

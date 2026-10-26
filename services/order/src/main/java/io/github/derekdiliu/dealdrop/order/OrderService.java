@@ -12,7 +12,7 @@ import io.github.derekdiliu.dealdrop.order.messages.OrderEvents.PaymentTimeout;
 import io.github.derekdiliu.dealdrop.order.messages.OrderEvents.RejectReason;
 import io.github.derekdiliu.dealdrop.order.messages.PaymentSucceeded;
 import io.github.derekdiliu.dealdrop.order.messages.PlaceOrder;
-import io.github.derekdiliu.dealdrop.order.outbox.Outbox;
+import io.github.derekdiliu.dealdrop.outbox.Outbox;
 import io.github.derekdiliu.dealdrop.order.shipping.ShippingRates;
 import io.github.derekdiliu.dealdrop.order.shipping.ShippingZone;
 import org.slf4j.Logger;

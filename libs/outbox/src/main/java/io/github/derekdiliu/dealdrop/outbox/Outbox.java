@@ -1,4 +1,4 @@
-package io.github.derekdiliu.dealdrop.order.outbox;
+package io.github.derekdiliu.dealdrop.outbox;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;

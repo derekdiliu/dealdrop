@@ -1,4 +1,4 @@
-package io.github.derekdiliu.dealdrop.order.outbox;
+package io.github.derekdiliu.dealdrop.outbox;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

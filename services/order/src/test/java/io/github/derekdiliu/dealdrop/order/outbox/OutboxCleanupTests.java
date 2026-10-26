@@ -1,6 +1,7 @@
 package io.github.derekdiliu.dealdrop.order.outbox;
 
 import io.github.derekdiliu.dealdrop.order.TestcontainersConfiguration;
+import io.github.derekdiliu.dealdrop.outbox.OutboxCleanup;
 import io.github.derekdiliu.dealdrop.testsupport.TestJwt;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

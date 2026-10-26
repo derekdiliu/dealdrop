@@ -1,4 +1,4 @@
-package io.github.derekdiliu.dealdrop.order.outbox;
+package io.github.derekdiliu.dealdrop.outbox;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,7 +17,7 @@ import java.time.Instant;
  * Unpublished messages are never deleted.
  */
 @Component
-class OutboxCleanup {
+public class OutboxCleanup {
 
     private static final Logger log = LoggerFactory.getLogger(OutboxCleanup.class);
 
@@ -30,7 +30,7 @@ class OutboxCleanup {
     }
 
     @Scheduled(fixedDelayString = "${dealdrop.outbox.cleanup-interval}")
-    void deletePublished() {
+    public void deletePublished() {
         int deleted = jdbc.sql("DELETE FROM outbox_messages WHERE published_at < :cutoff")
                 .param("cutoff", Timestamp.from(Instant.now().minus(retention)))
                 .update();

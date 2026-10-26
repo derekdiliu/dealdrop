@@ -11,9 +11,9 @@ reservation with zero overselling, and keeping orders, payments and stock consis
 ```
 Next.js storefront
         │
-     gateway ──── JWT validation, rate limiting, routing
+     gateway ──── JWT validation, routing, bounded connection pool
         │
-        ├── identity     users, addresses, login (OAuth2 / JWT)
+        ├── identity     users, login (OAuth2 / JWT)
         ├── catalog      deals, pricing, images (Cloudflare R2)
         ├── order        orders, stock and purchase limits, outbox, unpaid-order timeout
         ├── payment      Stripe payments, webhooks, refunds

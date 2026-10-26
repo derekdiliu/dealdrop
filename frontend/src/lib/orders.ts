@@ -1,5 +1,6 @@
 import "server-only";
 
+import { signInAgainIfExpired } from "@/lib/admin-deals";
 import { apiFetch } from "@/lib/api";
 
 export type OrderStatus = "PENDING_PAYMENT" | "PAID" | "CANCELLED";
@@ -34,6 +35,7 @@ export type Order = {
 
 export async function getOrders(token: string): Promise<Order[]> {
   const response = await apiFetch("/api/order/orders", { token });
+  signInAgainIfExpired(response, "/orders");
   if (!response.ok) {
     throw new Error(`Failed to load orders: HTTP ${response.status}`);
   }
@@ -43,6 +45,7 @@ export async function getOrders(token: string): Promise<Order[]> {
 /** Null if the order doesn't exist or isn't this customer's. */
 export async function getOrder(token: string, id: string): Promise<Order | null> {
   const response = await apiFetch(`/api/order/orders/${encodeURIComponent(id)}`, { token });
+  signInAgainIfExpired(response, `/orders/${id}`);
   if (response.status === 404 || response.status === 400) {
     return null;
   }

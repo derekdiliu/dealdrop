@@ -1,5 +1,6 @@
 package io.github.derekdiliu.dealdrop.order;
 
+import io.github.derekdiliu.dealdrop.order.messages.DealWithdrawn;
 import io.github.derekdiliu.dealdrop.order.messages.PaymentSucceeded;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
@@ -25,6 +26,8 @@ import org.springframework.context.annotation.Configuration;
  * outbox ──► EVENTS exchange (order.placed / order.rejected / order.cancelled / order.payment-rejected)
  *
  * payment.events ──payment.succeeded──► PAYMENT_SUCCEEDED ──► OrderListeners marks the order paid
+ *
+ * catalog.events ──deal.withdrawn──► DEAL_WITHDRAWN ──► OrderListeners cancels the deal's orders
  * </pre>
  *
  * Consumer queues dead-letter to a ".failed" queue once retries are exhausted, so a poison message is
@@ -46,6 +49,9 @@ class Messaging {
     // Owned by the payment service; declared here too so the binding below can be made.
     static final String PAYMENT_EVENTS = "payment.events";
     static final String PAYMENT_SUCCEEDED = "order.payment-succeeded";
+    // Owned by the catalog; declared here too so the binding below can be made.
+    static final String CATALOG_EVENTS = "catalog.events";
+    static final String DEAL_WITHDRAWN = "order.deal-withdrawn";
     private static final String PAYMENT_TIMEOUT_FAILED = "order.payment-timeout.failed";
 
     /** JSON payloads, deserialized into each listener's parameter type rather than a sender-chosen class. */
@@ -107,6 +113,26 @@ class Messaging {
     @Bean
     Binding paymentSucceededBinding() {
         return BindingBuilder.bind(paymentSucceeded()).to(paymentEvents()).with(PaymentSucceeded.ROUTING_KEY);
+    }
+
+    @Bean
+    TopicExchange catalogEvents() {
+        return new TopicExchange(CATALOG_EVENTS);
+    }
+
+    @Bean
+    Queue dealWithdrawn() {
+        return deadLetteringTo(DEAL_WITHDRAWN, DEAL_WITHDRAWN + ".failed");
+    }
+
+    @Bean
+    Queue dealWithdrawnFailed() {
+        return QueueBuilder.durable(DEAL_WITHDRAWN + ".failed").build();
+    }
+
+    @Bean
+    Binding dealWithdrawnBinding() {
+        return BindingBuilder.bind(dealWithdrawn()).to(catalogEvents()).with(DealWithdrawn.ROUTING_KEY);
     }
 
     private static Queue deadLetteringTo(String name, String failedQueue) {

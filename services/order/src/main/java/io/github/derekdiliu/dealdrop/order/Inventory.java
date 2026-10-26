@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -40,7 +41,10 @@ class Inventory {
                 .update() == 1;
     }
 
-    /** Takes quantity from the deal's remaining stock, seeding it from the catalog on first use. */
+    /**
+     * Takes quantity from the deal's remaining stock, seeding it from the catalog on first use.
+     * Fails if the stock has run out or the deal has been withdrawn.
+     */
     boolean reserveStock(UUID dealId, int initialStock, int quantity) {
         jdbc.sql("INSERT INTO deal_inventory (deal_id, remaining) VALUES (:dealId, :stock) ON CONFLICT DO NOTHING")
                 .param("dealId", dealId)
@@ -48,11 +52,52 @@ class Inventory {
                 .update();
         return jdbc.sql("""
                         UPDATE deal_inventory SET remaining = remaining - :quantity
-                        WHERE deal_id = :dealId AND remaining >= :quantity
+                        WHERE deal_id = :dealId AND remaining >= :quantity AND NOT withdrawn
                         """)
                 .param("dealId", dealId)
                 .param("quantity", quantity)
                 .update() == 1;
+    }
+
+    /**
+     * Stops all further stock reservations for the deal. Takes the same row lock as {@link #reserveStock},
+     * so an order placed concurrently has either committed before this returns, and is visible to the
+     * caller's next statement, or will see the deal as withdrawn. The stock is irrelevant from now on,
+     * so a deal with no orders yet is recorded with none.
+     */
+    void markWithdrawn(UUID dealId) {
+        jdbc.sql("""
+                        INSERT INTO deal_inventory (deal_id, remaining, withdrawn) VALUES (:dealId, 0, true)
+                        ON CONFLICT (deal_id) DO UPDATE SET withdrawn = true
+                        """)
+                .param("dealId", dealId)
+                .update();
+    }
+
+    boolean isWithdrawn(UUID dealId) {
+        return jdbc.sql("SELECT withdrawn FROM deal_inventory WHERE deal_id = :dealId")
+                .param("dealId", dealId)
+                .query(Boolean.class)
+                .optional()
+                .orElse(false);
+    }
+
+    /**
+     * Cancels every order for a withdrawn deal that is awaiting payment or paid. Nothing more will be sold,
+     * so stock and allowances are left as they were. Orders already cancelled are skipped, which makes
+     * repeated calls harmless.
+     */
+    List<Withdrawn> cancelForWithdrawnDeal(UUID dealId) {
+        return jdbc.sql("""
+                        UPDATE orders
+                        SET status = 'CANCELLED', cancel_reason = 'DEAL_WITHDRAWN', updated_at = :now, version = version + 1
+                        WHERE deal_id = :dealId AND status IN ('PENDING_PAYMENT', 'PAID')
+                        RETURNING id, user_id, deal_id, quantity, payment_intent_id
+                        """)
+                .param("now", Timestamp.from(Instant.now()))
+                .param("dealId", dealId)
+                .query(Withdrawn.class)
+                .list();
     }
 
     /**
@@ -93,5 +138,9 @@ class Inventory {
     }
 
     record Released(UUID userId, UUID dealId, int quantity) {
+    }
+
+    /** An order cancelled because its deal was withdrawn; paymentIntentId is set if it had been paid. */
+    record Withdrawn(UUID id, UUID userId, UUID dealId, int quantity, String paymentIntentId) {
     }
 }

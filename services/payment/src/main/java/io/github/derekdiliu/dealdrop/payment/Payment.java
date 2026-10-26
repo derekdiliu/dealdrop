@@ -97,7 +97,7 @@ public class Payment {
         SUCCEEDED,
         /** The order was cancelled before the customer paid. */
         CANCELLED,
-        /** Paid, but the order could not accept it, so the money was returned. */
+        /** Paid, but the order could not keep it (it had been cancelled, or its deal withdrawn), so the money was returned. */
         REFUNDED
     }
 }

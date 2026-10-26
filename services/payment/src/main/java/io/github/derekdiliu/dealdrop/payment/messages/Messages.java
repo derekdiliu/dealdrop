@@ -23,7 +23,7 @@ public final class Messages {
     public record OrderCancelled(UUID orderId) {
     }
 
-    /** The order could not accept a payment, so it must be refunded. */
+    /** The order cannot keep a payment (for example, its deal was withdrawn), so it must be refunded. */
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record OrderPaymentRejected(UUID orderId, String paymentIntentId, String reason) {
     }

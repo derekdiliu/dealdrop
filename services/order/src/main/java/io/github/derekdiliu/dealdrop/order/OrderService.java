@@ -2,6 +2,7 @@ package io.github.derekdiliu.dealdrop.order;
 
 import io.github.derekdiliu.dealdrop.common.ApiErrors;
 import io.github.derekdiliu.dealdrop.order.Inventory.Released;
+import io.github.derekdiliu.dealdrop.order.Inventory.Withdrawn;
 import io.github.derekdiliu.dealdrop.order.messages.OrderEvents;
 import io.github.derekdiliu.dealdrop.order.messages.OrderEvents.OrderCancelled;
 import io.github.derekdiliu.dealdrop.order.messages.OrderEvents.OrderPaymentRejected;
@@ -74,7 +75,8 @@ class OrderService {
                     throw new Rejected(RejectReason.LIMIT_EXCEEDED);
                 }
                 if (!inventory.reserveStock(request.dealId(), request.dealStock(), request.quantity())) {
-                    throw new Rejected(RejectReason.SOLD_OUT);
+                    throw new Rejected(inventory.isWithdrawn(request.dealId())
+                            ? RejectReason.DEAL_WITHDRAWN : RejectReason.SOLD_OUT);
                 }
                 Order order = orders.save(new Order(request, zone, shippingCents, paymentTimeout));
                 outbox.enqueue(Messaging.DEFAULT_EXCHANGE, Messaging.PAYMENT_TIMEOUT_WAITING,
@@ -149,6 +151,26 @@ class OrderService {
             log.warn("Rejecting payment {} for order {}: {}", payment.paymentIntentId(), payment.orderId(), reason);
             outbox.enqueue(Messaging.EVENTS, OrderEvents.PAYMENT_REJECTED,
                     new OrderPaymentRejected(payment.orderId(), payment.paymentIntentId(), reason), null);
+        });
+    }
+
+    /**
+     * Rejects any further placements for the deal and cancels its orders. Each cancellation is announced,
+     * and a paid order's payment is also rejected so the payment service refunds it. Safe to call again.
+     */
+    void withdrawDeal(UUID dealId) {
+        transaction.executeWithoutResult(status -> {
+            inventory.markWithdrawn(dealId);
+            List<Withdrawn> cancelled = inventory.cancelForWithdrawnDeal(dealId);
+            for (Withdrawn order : cancelled) {
+                outbox.enqueue(Messaging.EVENTS, OrderEvents.CANCELLED,
+                        new OrderCancelled(order.id(), order.userId(), order.dealId(), order.quantity()), null);
+                if (order.paymentIntentId() != null) {
+                    outbox.enqueue(Messaging.EVENTS, OrderEvents.PAYMENT_REJECTED, new OrderPaymentRejected(
+                            order.id(), order.paymentIntentId(), PaymentRejectReason.DEAL_WITHDRAWN), null);
+                }
+            }
+            log.info("Deal {} withdrawn; cancelled {} orders", dealId, cancelled.size());
         });
     }
 

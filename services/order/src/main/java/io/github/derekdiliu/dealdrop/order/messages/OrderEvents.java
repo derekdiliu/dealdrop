@@ -26,7 +26,7 @@ public final class OrderEvents {
     public record OrderCancelled(UUID orderId, UUID userId, UUID dealId, int quantity) {
     }
 
-    /** A payment arrived that the order cannot accept; the payment service refunds it. */
+    /** A payment the order cannot keep; the payment service refunds it. */
     public record OrderPaymentRejected(UUID orderId, String paymentIntentId, PaymentRejectReason reason) {
     }
 
@@ -34,12 +34,15 @@ public final class OrderEvents {
         /** Most often the payment window closed just before the customer paid. */
         ORDER_NOT_AWAITING_PAYMENT,
         ORDER_NOT_FOUND,
-        AMOUNT_MISMATCH
+        AMOUNT_MISMATCH,
+        /** The order was paid, then cancelled because its deal was withdrawn. */
+        DEAL_WITHDRAWN
     }
 
     public enum RejectReason {
         SOLD_OUT,
-        LIMIT_EXCEEDED
+        LIMIT_EXCEEDED,
+        DEAL_WITHDRAWN
     }
 
     /** Self-addressed: delivered after the payment window to cancel the order if still unpaid. */

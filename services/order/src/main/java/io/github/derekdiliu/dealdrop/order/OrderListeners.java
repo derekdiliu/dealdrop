@@ -1,5 +1,6 @@
 package io.github.derekdiliu.dealdrop.order;
 
+import io.github.derekdiliu.dealdrop.order.messages.DealWithdrawn;
 import io.github.derekdiliu.dealdrop.order.messages.OrderEvents.PaymentTimeout;
 import io.github.derekdiliu.dealdrop.order.messages.PaymentSucceeded;
 import io.github.derekdiliu.dealdrop.order.messages.PlaceOrder;
@@ -29,5 +30,10 @@ class OrderListeners {
     @RabbitListener(queues = Messaging.PAYMENT_TIMEOUT_EXPIRED)
     void onPaymentTimeout(PaymentTimeout timeout) {
         orders.expire(timeout.orderId());
+    }
+
+    @RabbitListener(queues = Messaging.DEAL_WITHDRAWN)
+    void onDealWithdrawn(DealWithdrawn event) {
+        orders.withdrawDeal(event.dealId());
     }
 }

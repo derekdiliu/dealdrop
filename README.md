@@ -136,7 +136,8 @@ curl -X POST localhost:8080/api/catalog/admin/deals/$DEAL_ID/publish -H "$ADMIN"
 curl localhost:8080/api/catalog/deals
 ```
 
-Published deals are locked; drafts can be edited or deleted. Tests run against S3Mock instead of R2.
+Published deals are locked; drafts can be edited or deleted. A published deal can still be withdrawn
+(see below). Tests run against S3Mock instead of R2.
 
 ## Flash sale
 
@@ -230,6 +231,32 @@ Locally, Stripe needs a public URL to deliver webhooks to; the Stripe CLI forwar
 stripe listen --print-secret                      # the whsec_ secret, the same every run
 stripe listen --events payment_intent.succeeded --forward-to localhost:8080/api/payment/webhooks/stripe
 ```
+
+## Withdrawing a deal
+
+A price typed wrong or a faulty product has to come off sale at once, mid-sale included. Withdrawing is
+permanent: the deal leaves the storefront, nothing more is sold, and every order for it is cancelled,
+with paid ones refunded in full.
+
+```
+POST /api/catalog/admin/deals/{id}/withdraw
+  │ status → WITHDRAWN, plus a deal.withdrawn row in the catalog's outbox, in one transaction
+  ▼
+catalog.events ──deal.withdrawn──┬──► flash-sale: withdrawn marker in Redis; the Lua gate refuses at once
+                                 └──► order: reject further placements; cancel pending and paid orders
+                                         │ order.cancelled          ──► payment cancels the PaymentIntent
+                                         └ order.payment-rejected   ──► payment refunds (paid orders)
+```
+
+- **flash-sale caches deal details for 10 seconds**, so the catalog's 404 alone would let sales continue
+  that long. The Redis marker is shared by every instance and checked first in the reservation script; it
+  is a separate key rather than zero stock because cancelling the orders gives stock back.
+- **No order slips past the withdrawal.** Marking the deal withdrawn and reserving stock update the same
+  `deal_inventory` row, so a concurrent placement either commits first and is then cancelled, or sees the
+  deal withdrawn and is rejected. A test places orders from 8 threads while the deal is withdrawn and expects
+  none to survive.
+- Refunds reuse the late-payment path, so a payment that lands just after the withdrawal is refunded too.
+  The outbox is a shared module (`libs/outbox`) used by catalog and order.
 
 ## Storefront
 

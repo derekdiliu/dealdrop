@@ -16,6 +16,8 @@
 # next.js
 /.next/
 /out/
+# written by `next dev`
+/AGENTS.md
 
 # production
 /build

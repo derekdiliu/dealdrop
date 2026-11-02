@@ -65,6 +65,9 @@ describe("formatDuration", () => {
 
   it("drops the hours within the last hour", () => {
     expect(formatDuration(4 * 60 + 9)).toBe("4m 09s");
-    expect(formatDuration(0)).toBe("0m 00s");
+  });
+
+  it("shows only seconds within the last minute", () => {
+    expect(formatDuration(13)).toBe("13s");
   });
 });

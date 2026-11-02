@@ -18,7 +18,7 @@ export function formatNzDateTime(iso: string): string {
   return nzDateTime.format(new Date(iso));
 }
 
-/** A countdown such as "2d 5h", "3h 04m 09s" or "4m 09s". */
+/** A countdown such as "2d 5h", "3h 04m 09s", "4m 09s" or "13s". */
 export function formatDuration(totalSeconds: number): string {
   const days = Math.floor(totalSeconds / 86_400);
   const hours = Math.floor((totalSeconds % 86_400) / 3600);
@@ -31,7 +31,10 @@ export function formatDuration(totalSeconds: number): string {
   if (hours > 0) {
     return `${hours}h ${pad(minutes)}m ${pad(seconds)}s`;
   }
-  return `${minutes}m ${pad(seconds)}s`;
+  if (minutes > 0) {
+    return `${minutes}m ${pad(seconds)}s`;
+  }
+  return `${seconds}s`;
 }
 
 export function discountPercent(priceCents: number, rrpCents: number): number {

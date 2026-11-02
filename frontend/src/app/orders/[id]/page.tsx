@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { cancelOrder } from "@/app/actions/orders";
+import { CancelOrder } from "@/components/cancel-order";
 import { DeliveryAddress, OrderStatusBadge, OrderSummary } from "@/components/order-bits";
 import { PaymentConfirming } from "@/components/payment-confirming";
 import { PaymentCountdown } from "@/components/payment-countdown";
@@ -52,11 +52,7 @@ async function OrderDetail({ params, searchParams }: Pick<PageProps<"/orders/[id
               <>
                 <PaymentCountdown expiresAt={order.expiresAt} />
                 <PaymentPanel orderId={order.id} />
-                <form action={cancelOrder.bind(null, order.id)}>
-                  <button type="submit" className="text-sm text-zinc-500 hover:underline">
-                    Cancel order
-                  </button>
-                </form>
+                <CancelOrder orderId={order.id} />
               </>
             )}
           </div>

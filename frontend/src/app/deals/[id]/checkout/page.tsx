@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -36,9 +37,15 @@ async function Checkout({ params }: Pick<PageProps<"/deals/[id]/checkout">, "par
         ← Back to deal
       </Link>
       <h1 className="mt-4 text-2xl font-semibold tracking-tight">Checkout</h1>
-      <p className="mt-1 text-zinc-600 dark:text-zinc-400">
-        {deal.title} · {formatNzd(deal.priceCents)} each, incl. GST
-      </p>
+      <div className="mt-4 flex items-center gap-4 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+        <div className="relative h-16 w-20 shrink-0 overflow-hidden rounded-md bg-zinc-100 dark:bg-zinc-900">
+          <Image src={deal.imageUrl} alt="" fill sizes="80px" className="object-cover" />
+        </div>
+        <div className="min-w-0">
+          <p className="truncate font-medium">{deal.title}</p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">{formatNzd(deal.priceCents)} each, incl. GST</p>
+        </div>
+      </div>
       <div className="mt-6">
         {deal.state === "LIVE" && remaining === 0 ? (
           <p>
@@ -48,7 +55,7 @@ async function Checkout({ params }: Pick<PageProps<"/deals/[id]/checkout">, "par
             </Link>
           </p>
         ) : deal.state === "LIVE" ? (
-          <CheckoutForm dealId={deal.id} limit={deal.perCustomerLimit} />
+          <CheckoutForm dealId={deal.id} limit={deal.perCustomerLimit} priceCents={deal.priceCents} />
         ) : (
           <p>This deal isn&apos;t on sale right now.</p>
         )}

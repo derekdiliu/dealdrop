@@ -3,10 +3,7 @@
 import type { InputHTMLAttributes, TextareaHTMLAttributes } from "react";
 import { useFormStatus } from "react-dom";
 
-import { buttonClass } from "@/components/styles";
-
-const inputClass =
-  "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:focus:border-zinc-100";
+import { buttonClass, inputClass } from "@/components/styles";
 
 export function Field({ label, ...input }: { label: string } & InputHTMLAttributes<HTMLInputElement>) {
   return (

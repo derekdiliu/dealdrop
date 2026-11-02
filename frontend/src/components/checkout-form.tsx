@@ -1,13 +1,17 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import { purchase } from "@/app/actions/orders";
 import { Field, FormError, SubmitButton } from "@/components/form";
+import { inputClass } from "@/components/styles";
+import { formatNzd } from "@/lib/format";
 
-export function CheckoutForm({ dealId, limit }: { dealId: string; limit: number }) {
+export function CheckoutForm({ dealId, limit, priceCents }: { dealId: string; limit: number; priceCents: number }) {
   const [state, action] = useActionState(purchase.bind(null, dealId), {});
   const typed = state.values ?? {};
+  // Only drives the subtotal; the select stays uncontrolled so it refills like the other fields after an error.
+  const [quantity, setQuantity] = useState(Number(typed.quantity ?? 1));
   return (
     <form action={action} className="space-y-4">
       <label className="block text-sm">
@@ -15,7 +19,8 @@ export function CheckoutForm({ dealId, limit }: { dealId: string; limit: number 
         <select
           name="quantity"
           defaultValue={typed.quantity ?? 1}
-          className="mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700"
+          onChange={(event) => setQuantity(Number(event.target.value))}
+          className={inputClass}
         >
           {Array.from({ length: limit }, (_, i) => i + 1).map((n) => (
             <option key={n} value={n}>
@@ -24,6 +29,10 @@ export function CheckoutForm({ dealId, limit }: { dealId: string; limit: number 
           ))}
         </select>
       </label>
+      <p className="flex justify-between text-sm">
+        <span>Subtotal before shipping</span>
+        <span className="font-semibold">{formatNzd(priceCents * quantity)}</span>
+      </p>
 
       <fieldset className="space-y-4">
         <legend className="mb-2 font-medium">Delivery address</legend>

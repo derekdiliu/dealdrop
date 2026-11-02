@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -6,6 +7,8 @@ import { CheckoutForm } from "@/components/checkout-form";
 import { getDeal, getRemainingStock } from "@/lib/deals";
 import { formatNzd } from "@/lib/format";
 import { requireToken } from "@/lib/session";
+
+export const metadata: Metadata = { title: "Checkout" };
 
 export default function CheckoutPage({ params }: PageProps<"/deals/[id]/checkout">) {
   return (

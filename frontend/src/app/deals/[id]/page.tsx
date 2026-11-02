@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -7,6 +8,12 @@ import { StateBadge, TimingLine } from "@/components/deal-timing";
 import { buttonClass } from "@/components/styles";
 import { getDeal, getRemainingStock } from "@/lib/deals";
 import { discountPercent, formatNzd } from "@/lib/format";
+
+// Streams in with the deal; the fetch is shared with DealDetail's.
+export async function generateMetadata({ params }: PageProps<"/deals/[id]">): Promise<Metadata> {
+  const deal = await getDeal((await params).id);
+  return deal ? { title: deal.title } : {};
+}
 
 // The page itself never awaits, so its shell can be prerendered; the deal streams in per request.
 export default function DealPage({ params }: PageProps<"/deals/[id]">) {

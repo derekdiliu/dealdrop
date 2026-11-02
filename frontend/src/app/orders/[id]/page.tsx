@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -10,6 +11,8 @@ import { PaymentPanel } from "@/components/payment-panel";
 import { formatNzDateTime } from "@/lib/format";
 import { getOrder, type Order } from "@/lib/orders";
 import { requireToken } from "@/lib/session";
+
+export const metadata: Metadata = { title: "Order" };
 
 export default function OrderPage({ params, searchParams }: PageProps<"/orders/[id]">) {
   return (

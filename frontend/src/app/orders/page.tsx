@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -5,6 +6,8 @@ import { OrderStatusBadge } from "@/components/order-bits";
 import { formatNzDateTime, formatNzd } from "@/lib/format";
 import { getOrders } from "@/lib/orders";
 import { requireToken } from "@/lib/session";
+
+export const metadata: Metadata = { title: "My orders" };
 
 export default function OrdersPage() {
   return (

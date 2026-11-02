@@ -1,6 +1,9 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { PurchaseStatus } from "@/components/purchase-status";
+
+export const metadata: Metadata = { title: "Placing your order" };
 
 export default function PurchasePage({ params }: PageProps<"/purchases/[id]">) {
   return (

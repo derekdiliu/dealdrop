@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "dealdrop",
+  title: { default: "dealdrop", template: "%s · dealdrop" },
   description: "Limited-time deals across Aotearoa New Zealand.",
 };
 

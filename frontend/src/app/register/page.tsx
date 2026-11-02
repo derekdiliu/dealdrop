@@ -1,6 +1,9 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { RegisterForm } from "@/components/auth-forms";
+
+export const metadata: Metadata = { title: "Create your account" };
 
 export default function Page() {
   return (

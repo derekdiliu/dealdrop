@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { StateBadge, TimingLine } from "@/components/deal-timing";
-import { getDeals } from "@/lib/deals";
+import { getDeals, getRemainingStock } from "@/lib/deals";
 import { discountPercent, formatNzd } from "@/lib/format";
 
 export default function Home() {
@@ -32,10 +32,11 @@ async function DealGrid() {
   if (deals.length === 0) {
     return <p className="mt-8">No deals right now. Check back soon.</p>;
   }
+  const remaining = await Promise.all(deals.map((deal) => (deal.state === "LIVE" ? getRemainingStock(deal.id) : null)));
 
   return (
     <ul className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-      {deals.map((deal) => (
+      {deals.map((deal, i) => (
         <li key={deal.id}>
           <Link
             href={`/deals/${deal.id}`}
@@ -52,7 +53,7 @@ async function DealGrid() {
             </div>
             <div className="space-y-2 p-4">
               <div className="flex items-center justify-between gap-2">
-                <StateBadge state={deal.state} />
+                <StateBadge state={deal.state} soldOut={remaining[i] === 0} />
                 <span className="text-sm text-zinc-500">
                   <TimingLine deal={deal} />
                 </span>

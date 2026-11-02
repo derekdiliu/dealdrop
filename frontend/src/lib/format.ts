@@ -18,6 +18,22 @@ export function formatNzDateTime(iso: string): string {
   return nzDateTime.format(new Date(iso));
 }
 
+/** A countdown such as "2d 5h", "3h 04m 09s" or "4m 09s". */
+export function formatDuration(totalSeconds: number): string {
+  const days = Math.floor(totalSeconds / 86_400);
+  const hours = Math.floor((totalSeconds % 86_400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  if (days > 0) {
+    return `${days}d ${hours}h`;
+  }
+  if (hours > 0) {
+    return `${hours}h ${pad(minutes)}m ${pad(seconds)}s`;
+  }
+  return `${minutes}m ${pad(seconds)}s`;
+}
+
 export function discountPercent(priceCents: number, rrpCents: number): number {
   return Math.round((1 - priceCents / rrpCents) * 100);
 }

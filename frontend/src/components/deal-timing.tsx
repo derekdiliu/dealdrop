@@ -13,10 +13,12 @@ const badgeLabels: Record<Deal["state"], string> = {
   ENDED: "Ended",
 };
 
-export function StateBadge({ state }: { state: Deal["state"] }) {
+/** A live deal with no stock left shows as sold out, styled like an ended one. */
+export function StateBadge({ state, soldOut = false }: { state: Deal["state"]; soldOut?: boolean }) {
+  const shown = soldOut && state === "LIVE";
   return (
-    <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${badgeStyles[state]}`}>
-      {badgeLabels[state]}
+    <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${shown ? badgeStyles.ENDED : badgeStyles[state]}`}>
+      {shown ? "Sold out" : badgeLabels[state]}
     </span>
   );
 }

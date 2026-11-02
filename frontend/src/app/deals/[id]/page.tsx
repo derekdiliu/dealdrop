@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { DealCountdown } from "@/components/deal-countdown";
 import { StateBadge, TimingLine } from "@/components/deal-timing";
 import { buttonClass } from "@/components/styles";
 import { getDeal, getRemainingStock } from "@/lib/deals";
@@ -51,7 +52,7 @@ async function DealDetail({ params }: Pick<PageProps<"/deals/[id]">, "params">) 
       </div>
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <StateBadge state={deal.state} />
+          <StateBadge state={deal.state} soldOut={remaining === 0} />
           <span className="text-sm text-zinc-500">
             <TimingLine deal={deal} />
           </span>
@@ -78,10 +79,19 @@ async function DealDetail({ params }: Pick<PageProps<"/deals/[id]">, "params">) 
           {" · "}Limit {deal.perCustomerLimit} per customer
         </p>
         {deal.state === "LIVE" && remaining !== 0 && (
-          // Checkout asks the customer to sign in first if needed.
-          <Link href={`/deals/${deal.id}/checkout`} className={`block text-center ${buttonClass}`}>
-            Buy now
-          </Link>
+          <div className="space-y-2">
+            <DealCountdown until={deal.endsAt} label="Ends in" />
+            {/* Checkout asks the customer to sign in first if needed. */}
+            <Link href={`/deals/${deal.id}/checkout`} className={`block text-center ${buttonClass}`}>
+              Buy now
+            </Link>
+          </div>
+        )}
+        {deal.state === "UPCOMING" && (
+          <div className="rounded-lg border border-amber-300 p-4 dark:border-amber-700">
+            <DealCountdown until={deal.startsAt} label="Goes on sale in" />
+            <p className="mt-1 text-sm text-zinc-500">Keep this page open: it switches to Buy now when the sale starts.</p>
+          </div>
         )}
         <p className="whitespace-pre-line leading-relaxed text-zinc-700 dark:text-zinc-300">
           {deal.description}

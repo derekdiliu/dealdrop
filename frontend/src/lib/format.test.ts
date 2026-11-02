@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { discountPercent, formatNzDateTime, formatNzd, fromNzInputValue, toNzInputValue } from "@/lib/format";
+import { discountPercent, formatDuration, formatNzDateTime, formatNzd, fromNzInputValue, toNzInputValue } from "@/lib/format";
 
 describe("fromNzInputValue", () => {
   it("adds +13:00 in daylight saving and +12:00 outside it", () => {
@@ -51,5 +51,20 @@ describe("display formats", () => {
   it("rounds the discount to a whole percent", () => {
     expect(discountPercent(2900, 4500)).toBe(36);
     expect(discountPercent(7999, 15900)).toBe(50);
+  });
+});
+
+describe("formatDuration", () => {
+  it("shows days and hours when a day or more is left", () => {
+    expect(formatDuration(2 * 86_400 + 5 * 3600 + 59)).toBe("2d 5h");
+  });
+
+  it("shows hours, minutes and seconds within a day", () => {
+    expect(formatDuration(3 * 3600 + 4 * 60 + 9)).toBe("3h 04m 09s");
+  });
+
+  it("drops the hours within the last hour", () => {
+    expect(formatDuration(4 * 60 + 9)).toBe("4m 09s");
+    expect(formatDuration(0)).toBe("0m 00s");
   });
 });
